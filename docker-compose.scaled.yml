@@ -1,0 +1,98 @@
+# Scaled deployment overlay for Open Model Prism.
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.scaled.yml up -d --scale worker=3
+#
+# This overlay:
+#   - Upgrades MongoDB to a single-node replica set (rs0) for Change Streams
+#   - Adds an rs-init one-shot service that calls rs.initiate()
+#   - Disables the default single-pod "app" service
+#   - Adds a "control" service (NODE_ROLE=control) on port 3000
+#   - Adds a scalable "worker" service (NODE_ROLE=worker)
+#
+# Architecture:
+#
+#   Clients / Developers (Continue, Cursor, Claude Code, Open WebUI, …)
+#       │
+#       ├─ /api/:tenant/v1/* ──► Worker pods  (NODE_ROLE=worker, --scale worker=N)
+#       └─ /* (admin UI, auth) ──► Control plane :3000  (NODE_ROLE=control)
+#
+# Put nginx or a cloud load balancer in front to route by path prefix.
+
+services:
+
+  # Disable the single-pod "full" app from the base compose
+  app:
+    deploy:
+      replicas: 0
+
+  # Override MongoDB to run as single-node replica set
+  mongodb:
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
+    environment:
+      - MONGO_URI=mongodb://mongodb:27017/openmodelprism?replicaSet=rs0&directConnection=true
+
+  # One-shot service: initialises the replica set on first boot, exits 0 immediately on subsequent runs
+  rs-init:
+    image: mongo:7
+    container_name: open-model-prism-rs-init
+    restart: "no"
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    command: >
+      mongosh --host mongodb:27017 --eval
+      "try { rs.status(); print('rs0 already initiated'); }
+       catch(e) { rs.initiate({ _id: 'rs0', members: [{ _id: 0, host: 'mongodb:27017' }] }); print('rs0 initiated'); }"
+
+  # Control plane: Admin UI + Admin API only
+  control:
+    image: ghcr.io/ai-ohara-systems/model-prism:latest
+    # build: .   # uncomment to build from source
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - MONGO_URI=mongodb://mongodb:27017/openmodelprism?replicaSet=rs0&directConnection=true
+      - JWT_SECRET=${JWT_SECRET:-change-me-in-production-jwt-secret}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY:-change-me-32-chars-encryption-k!}
+      - NODE_ENV=production
+      - PORT=3000
+      - LOG_LEVEL=info
+      - NODE_ROLE=control
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      rs-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Worker pods: Gateway only — scale freely with --scale worker=N
+  worker:
+    image: ghcr.io/ai-ohara-systems/model-prism:latest
+    # build: .   # uncomment to build from source
+    restart: unless-stopped
+    environment:
+      - MONGO_URI=mongodb://mongodb:27017/openmodelprism?replicaSet=rs0&directConnection=true
+      - JWT_SECRET=${JWT_SECRET:-change-me-in-production-jwt-secret}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY:-change-me-32-chars-encryption-k!}
+      - NODE_ENV=production
+      - PORT=3000
+      - LOG_LEVEL=info
+      - NODE_ROLE=worker
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      rs-init:
+        condition: service_completed_successfully
+      control:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3

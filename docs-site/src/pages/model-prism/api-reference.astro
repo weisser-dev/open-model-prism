@@ -1,0 +1,642 @@
+---
+import DocsPage from '../../layouts/DocsPage.astro';
+---
+
+<DocsPage title="API Reference — Model Prism" description="Complete API reference for the Open Model Prism gateway API, admin API, tenant portal API, and global endpoints.">
+
+  <h1 class="text-3xl font-bold text-white mb-6">API Reference</h1>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Gateway API</h2>
+  <p class="text-white/55 leading-relaxed mb-4">The gateway exposes an OpenAI-compatible REST API. All authenticated endpoints require a tenant API key as a Bearer token.</p>
+  <div class="space-y-2 mb-6">
+    <p class="text-white/55 text-sm"><span class="text-white/40 uppercase text-xs font-semibold">Base URL:</span> <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">https://your-host/api/&lt;tenant-slug&gt;/v1</code></p>
+    <p class="text-white/55 text-sm"><span class="text-white/40 uppercase text-xs font-semibold">Authentication:</span> <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">Authorization: Bearer omp-&lt;your-api-key&gt;</code></p>
+  </div>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-3">POST /v1/chat/completions</h3>
+  <p class="text-white/55 leading-relaxed mb-3">Chat completions. Supports streaming and non-streaming. Set <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">"model": "auto"</code> to enable automatic routing.</p>
+  <pre class="bg-[#0d0d14] border border-white/10 rounded-lg p-4 overflow-x-auto text-sm text-white/70 mb-4 font-mono"><code>&#123;
+  "model": "gpt-4o",
+  "messages": [
+    &#123; "role": "system", "content": "You are a helpful assistant." &#125;,
+    &#123; "role": "user",   "content": "Hello!" &#125;
+  ],
+  "temperature": 0.7,
+  "stream": false
+&#125;</code></pre>
+  <h4 class="text-base font-medium text-white/80 mt-4 mb-2">Session Tracking</h4>
+  <p class="text-white/55 text-sm mb-2">Send an <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">x-session-id</code> header to group related requests into a session. If omitted, a UUID is auto-generated. The session ID is returned in the response header <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">x-session-id</code> and in the JSON body as <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">session_id</code>. Use sessions to correlate requests in the Benchmarks API.</p>
+
+  <p class="text-white/55 text-sm mb-2">When <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">model=auto</code>, the response includes an <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">auto_routing</code> field:</p>
+  <pre class="bg-[#0d0d14] border border-white/10 rounded-lg p-4 overflow-x-auto text-sm text-white/70 mb-4 font-mono"><code>&#123;
+  "auto_routing": &#123;
+    "category": "smalltalk_simple",
+    "confidence": 0.94,
+    "model_id": "gpt-4o-mini",
+    "analysis_time_ms": 8,
+    "reasoning": "Short greeting, no technical content"
+  &#125;,
+  "cost_info": &#123;
+    "actual_cost": 0.0000087,
+    "baseline_cost": 0.0000087,
+    "saved": 0
+  &#125;
+&#125;</code></pre>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-3">POST /v1/embeddings</h3>
+  <pre class="bg-[#0d0d14] border border-white/10 rounded-lg p-4 overflow-x-auto text-sm text-white/70 mb-6 font-mono"><code>&#123; "model": "text-embedding-3-small", "input": "The quick brown fox" &#125;</code></pre>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-3">GET /v1/models</h3>
+  <p class="text-white/55 leading-relaxed mb-4">List models available to this tenant (respects whitelist/blacklist config). Requires Bearer token.</p>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-3">GET /v1/models/public</h3>
+  <p class="text-white/55 leading-relaxed mb-4">Same as <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">/v1/models</code> but no authentication required. Useful for client setup tools probing available models before auth is configured.</p>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-3">GET /v1/health</h3>
+  <p class="text-white/55 leading-relaxed mb-6">Tenant health check. No authentication required. Returns <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">&#123; status, tenant, providers, timestamp &#125;</code>. HTTP 503 if degraded.</p>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Error Responses</h2>
+  <p class="text-white/55 leading-relaxed mb-3">All gateway errors follow the OpenAI error format:</p>
+  <pre class="bg-[#0d0d14] border border-white/10 rounded-lg p-4 overflow-x-auto text-sm text-white/70 mb-4 font-mono"><code>&#123; "error": &#123; "message": "API key expired", "type": "authentication_error", "code": "key_expired" &#125; &#125;</code></pre>
+  <div class="overflow-x-auto mb-8">
+    <table class="w-full border-collapse">
+      <thead>
+        <tr>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">HTTP</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Type</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Code</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Cause</th>
+        </tr>
+      </thead>
+      <tbody>
+        {[
+          ['401', 'authentication_error', 'missing_api_key', 'No Bearer token'],
+          ['401', 'authentication_error', 'invalid_api_key', 'Key not found'],
+          ['401', 'authentication_error', 'key_disabled', 'Key disabled'],
+          ['401', 'authentication_error', 'key_expired', 'Key past expiry date'],
+          ['429', 'rate_limit_error', 'rate_limit_exceeded', 'Per-tenant rate limit hit'],
+          ['400', 'invalid_request_error', '—', 'Malformed request body'],
+          ['503', 'provider_error', '—', 'Upstream provider unavailable'],
+        ].map(([http, type, code, cause]) => (
+          <tr>
+            <td class="border-t border-white/10 px-4 py-2 text-white/70 text-sm">{http}</td>
+            <td class="border-t border-white/10 px-4 py-2 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">{type}</code></td>
+            <td class="border-t border-white/10 px-4 py-2 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">{code}</code></td>
+            <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">{cause}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Admin API</h2>
+  <p class="text-white/55 leading-relaxed mb-4">All admin endpoints require a valid JWT Bearer token. Login via <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">POST /api/prism/auth/login</code>.</p>
+  <p class="text-white/55 text-sm mb-6"><span class="text-white/40 uppercase text-xs font-semibold">Base URL:</span> <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">https://your-host/api/prism/admin</code></p>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-3">Providers</h3>
+  <div class="overflow-x-auto mb-6">
+    <table class="w-full border-collapse">
+      <thead>
+        <tr>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm w-20">Method</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Endpoint</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        {[
+          ['GET',    '/providers',                         'List all providers'],
+          ['POST',   '/providers',                         'Create provider'],
+          ['PUT',    '/providers/:id',                     'Update provider'],
+          ['DELETE', '/providers/:id',                     'Delete provider'],
+          ['POST',   '/providers/:id/check',               'Test connection with detailed log'],
+          ['POST',   '/providers/:id/discover',            'Discover and save models'],
+          ['GET',    '/providers/models/all',              'Flat list of all models across providers'],
+          ['PATCH',  '/providers/:id/models/:modelId',     'Update model metadata'],
+          ['POST',   '/providers/models/reorder-tier',     'Bulk reorder priorities within a tier'],
+        ].map(([method, path, desc]) => (
+          <tr>
+            <td class="border-t border-white/10 px-4 py-2 text-sm">
+              <span class={`inline-block px-1.5 py-0.5 rounded text-xs font-mono font-semibold ${
+                method === 'GET' ? 'bg-green-500/10 text-green-400' :
+                method === 'POST' ? 'bg-blue-500/10 text-blue-400' :
+                method === 'PUT' ? 'bg-orange-500/10 text-orange-400' :
+                method === 'DELETE' ? 'bg-red-500/10 text-red-400' :
+                'bg-purple-500/10 text-purple-400'
+              }`}>{method}</span>
+            </td>
+            <td class="border-t border-white/10 px-4 py-2 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-white/60 text-xs font-mono">{path}</code></td>
+            <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">{desc}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-2">Tenants</h3>
+  <div class="overflow-x-auto mb-6">
+    <table class="w-full border-collapse">
+      <thead>
+        <tr>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm w-20">Method</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Endpoint</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        {[
+          ['GET',    '/tenants',                  'List all tenants'],
+          ['POST',   '/tenants',                  'Create tenant'],
+          ['PUT',    '/tenants/:id',              'Update tenant'],
+          ['DELETE', '/tenants/:id',              'Delete tenant'],
+          ['POST',   '/tenants/:id/rotate-key',   'Rotate API key'],
+          ['PUT',    '/tenants/:id/model-config', 'Update model access config'],
+        ].map(([method, path, desc]) => (
+          <tr>
+            <td class="border-t border-white/10 px-4 py-2 text-sm">
+              <span class={`inline-block px-1.5 py-0.5 rounded text-xs font-mono font-semibold ${
+                method === 'GET' ? 'bg-green-500/10 text-green-400' :
+                method === 'POST' ? 'bg-blue-500/10 text-blue-400' :
+                method === 'PUT' ? 'bg-orange-500/10 text-orange-400' :
+                method === 'DELETE' ? 'bg-red-500/10 text-red-400' :
+                'bg-purple-500/10 text-purple-400'
+              }`}>{method}</span>
+            </td>
+            <td class="border-t border-white/10 px-4 py-2 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-white/60 text-xs font-mono">{path}</code></td>
+            <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">{desc}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-2">Categories</h3>
+  <div class="overflow-x-auto mb-6">
+    <table class="w-full border-collapse">
+      <thead>
+        <tr>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm w-20">Method</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Endpoint</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        {[
+          ['GET',    '/categories',                'List all routing categories'],
+          ['POST',   '/categories',                'Create category'],
+          ['PUT',    '/categories/:id',            'Update category'],
+          ['DELETE', '/categories/:id',            'Delete category'],
+          ['POST',   '/categories/reset-defaults', 'Re-seed deleted built-in categories'],
+          ['GET',    '/categories/presets',        'List available preset profiles'],
+          ['POST',   '/categories/apply-preset',   'Apply preset profiles — category benchmarks'],
+        ].map(([method, path, desc]) => (
+          <tr>
+            <td class="border-t border-white/10 px-4 py-2 text-sm">
+              <span class={`inline-block px-1.5 py-0.5 rounded text-xs font-mono font-semibold ${
+                method === 'GET' ? 'bg-green-500/10 text-green-400' :
+                method === 'POST' ? 'bg-blue-500/10 text-blue-400' :
+                method === 'PUT' ? 'bg-orange-500/10 text-orange-400' :
+                'bg-red-500/10 text-red-400'
+              }`}>{method}</span>
+            </td>
+            <td class="border-t border-white/10 px-4 py-2 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-white/60 text-xs font-mono">{path}</code></td>
+            <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">{desc}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-3">Dashboard</h3>
+  <div class="overflow-x-auto mb-6">
+    <table class="w-full border-collapse">
+      <thead>
+        <tr>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm w-20">Method</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Endpoint</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        {[
+          ['GET', '/dashboard/summary',   'KPI summary (cost, tokens, requests, savings)'],
+          ['GET', '/dashboard/daily',     'Daily time-series (cost + tokens per day)'],
+          ['GET', '/dashboard/models',    'Model usage breakdown'],
+          ['GET', '/dashboard/categories','Category usage breakdown'],
+          ['GET', '/dashboard/users',     'Per-user usage breakdown'],
+          ['GET', '/dashboard/requests',      'Paginated request log'],
+          ['GET', '/dashboard/tenants-list',  'Lightweight tenant list for filter dropdowns'],
+          ['GET', '/dashboard/top-paths',     'Top 100 captured file paths from prompts'],
+          ['GET', '/dashboard/rpm',           'Current requests per minute (global)'],
+        ].map(([method, path, desc]) => (
+          <tr>
+            <td class="border-t border-white/10 px-4 py-2 text-sm">
+              <span class="inline-block px-1.5 py-0.5 rounded text-xs font-mono font-semibold bg-green-500/10 text-green-400">{method}</span>
+            </td>
+            <td class="border-t border-white/10 px-4 py-2 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-white/60 text-xs font-mono">{path}</code></td>
+            <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">{desc}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+  <p class="text-white/55 text-sm mb-6">All dashboard endpoints accept <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">?days=7|30|90</code> and <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">?tenantId=&lt;id&gt;</code>. Tenant-viewer and tenant-admin roles are automatically scoped to their assigned tenants.</p>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-2">Benchmarks & Routing Evaluation</h3>
+  <p class="text-white/40 text-xs mb-3">Endpoints for AI-driven routing quality analysis, session tracking, and model comparison. Designed to be consumed by an autonomous Benchmark Agent that fine-tunes routing parameters.</p>
+  <div class="overflow-x-auto mb-4">
+    <table class="w-full border-collapse">
+      <thead>
+        <tr>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm w-20">Method</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Endpoint</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        {[
+          ['GET', '/benchmarks/activity',              'Full activity dump — request, decision, response, cost per request'],
+          ['GET', '/benchmarks/sessions',              'List sessions with aggregated stats (tokens, cost, models, errors)'],
+          ['GET', '/benchmarks/sessions/:sessionId',   'All requests within one session in chronological order'],
+          ['GET', '/benchmarks/evaluate',              'AI evaluation dataset with suggested quality checks'],
+          ['GET', '/benchmarks/model-comparison',      'Cross-model performance comparison by category and tier'],
+        ].map(([method, path, desc]) => (
+          <tr>
+            <td class="border-t border-white/10 px-4 py-2 text-sm">
+              <span class="inline-block px-1.5 py-0.5 rounded text-xs font-mono font-semibold bg-green-500/10 text-green-400">{method}</span>
+            </td>
+            <td class="border-t border-white/10 px-4 py-2 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-white/60 text-xs font-mono">{path}</code></td>
+            <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">{desc}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+
+  <h4 class="text-base font-medium text-white/80 mt-4 mb-2">Activity Dump Response Shape</h4>
+  <p class="text-white/55 text-sm mb-2">Each entry in <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">/benchmarks/activity</code> contains the complete routing context:</p>
+  <pre class="bg-[#0d0d14] border border-white/10 rounded-lg p-4 overflow-x-auto text-sm text-white/70 mb-4 font-mono"><code>&#123;
+  "id": "...",
+  "timestamp": "2026-04-05T14:30:00Z",
+  "sessionId": "abc-123-def",
+  "tenant": "my-app",
+  "request": &#123;
+    "model": "auto-prism",
+    "promptSnapshot": &#123; "systemPrompt": "...", "lastUserMessage": "..." &#125;
+  &#125;,
+  "decision": &#123;
+    "routedModel": "claude-sonnet-4-5",
+    "category": "coding_generation",
+    "costTier": "medium",
+    "confidence": 0.92,
+    "overrideApplied": null,
+    "routingSignals": &#123; "totalTokens": 1200, "hasToolCalls": true &#125;
+  &#125;,
+  "output": &#123;
+    "status": "success",
+    "inputTokens": 1200,
+    "outputTokens": 840,
+    "responseSnapshot": &#123; "content": "Here is the code...", "finishReason": "stop" &#125;
+  &#125;,
+  "cost": &#123;
+    "actualCostUsd": 0.0084,
+    "baselineCostUsd": 0.042,
+    "savedUsd": 0.0336
+  &#125;
+&#125;</code></pre>
+
+  <p class="text-white/55 text-sm mb-2">Common query parameters for benchmark endpoints:</p>
+  <ul class="list-disc ml-6 text-white/55 text-sm space-y-1 mb-6">
+    <li><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">?hours=2</code> — Time window (default: 2 for activity/evaluate, 24 for sessions/comparison)</li>
+    <li><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">?tenantId=&lt;id&gt;</code> — Filter by tenant</li>
+    <li><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">?sessionId=&lt;id&gt;</code> — Filter by session (activity endpoint)</li>
+    <li><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">?autoRoutedOnly=true</code> — Only auto-routed requests (evaluate endpoint)</li>
+    <li><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">?category=&lt;key&gt;</code> — Filter by routing category (comparison endpoint)</li>
+  </ul>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-3">Routing Rule Sets</h3>
+  <div class="overflow-x-auto mb-6">
+    <table class="w-full border-collapse">
+      <thead>
+        <tr>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm w-20">Method</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Endpoint</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        {[
+          ['GET',    '/routing/rule-sets',              'List all routing rule sets'],
+          ['POST',   '/routing/rule-sets',              'Create rule set'],
+          ['PUT',    '/routing/rule-sets/:id',          'Update rule set (rules, classifier config)'],
+          ['DELETE', '/routing/rule-sets/:id',          'Delete rule set'],
+          ['POST',   '/routing/rule-sets/:id/set-default', 'Set as global default rule set'],
+          ['POST',   '/routing/benchmark',              'Benchmark classifier accuracy against sample prompts'],
+        ].map(([method, path, desc]) => (
+          <tr>
+            <td class="border-t border-white/10 px-4 py-2 text-sm">
+              <span class={`inline-block px-1.5 py-0.5 rounded text-xs font-mono font-semibold ${
+                method === 'GET' ? 'bg-green-500/10 text-green-400' :
+                method === 'POST' ? 'bg-blue-500/10 text-blue-400' :
+                method === 'PUT' ? 'bg-orange-500/10 text-orange-400' :
+                'bg-red-500/10 text-red-400'
+              }`}>{method}</span>
+            </td>
+            <td class="border-t border-white/10 px-4 py-2 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-white/60 text-xs font-mono">{path}</code></td>
+            <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">{desc}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-3">Users</h3>
+  <div class="overflow-x-auto mb-6">
+    <table class="w-full border-collapse">
+      <thead>
+        <tr>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm w-20">Method</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Endpoint</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Role</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        {[
+          ['GET',    '/users',     'admin', 'List all users'],
+          ['POST',   '/users',     'admin', 'Create user'],
+          ['PUT',    '/users/:id', 'admin', 'Update user (role, tenants, password, active)'],
+          ['DELETE', '/users/:id', 'admin', 'Delete user'],
+        ].map(([method, path, role, desc]) => (
+          <tr>
+            <td class="border-t border-white/10 px-4 py-2 text-sm">
+              <span class={`inline-block px-1.5 py-0.5 rounded text-xs font-mono font-semibold ${
+                method === 'GET' ? 'bg-green-500/10 text-green-400' :
+                method === 'POST' ? 'bg-blue-500/10 text-blue-400' :
+                method === 'PUT' ? 'bg-orange-500/10 text-orange-400' :
+                'bg-red-500/10 text-red-400'
+              }`}>{method}</span>
+            </td>
+            <td class="border-t border-white/10 px-4 py-2 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-white/60 text-xs font-mono">{path}</code></td>
+            <td class="border-t border-white/10 px-4 py-2 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-red-400/60 text-xs font-mono">{role}</code></td>
+            <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">{desc}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-2">LDAP / Active Directory</h3>
+  <div class="overflow-x-auto mb-6">
+    <table class="w-full border-collapse">
+      <thead>
+        <tr>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm w-20">Method</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Endpoint</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Role</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        {[
+          ['GET',  '/ldap',      'admin', 'Get LDAP configuration'],
+          ['PUT',  '/ldap',      'admin', 'Update LDAP configuration (URL, bind DN, group mappings)'],
+          ['POST', '/ldap/test', 'admin', 'Test connection and verify group mapping'],
+        ].map(([method, path, role, desc]) => (
+          <tr>
+            <td class="border-t border-white/10 px-4 py-2 text-sm">
+              <span class={`inline-block px-1.5 py-0.5 rounded text-xs font-mono font-semibold ${
+                method === 'GET' ? 'bg-green-500/10 text-green-400' :
+                method === 'POST' ? 'bg-blue-500/10 text-blue-400' :
+                'bg-orange-500/10 text-orange-400'
+              }`}>{method}</span>
+            </td>
+            <td class="border-t border-white/10 px-4 py-2 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-white/60 text-xs font-mono">{path}</code></td>
+            <td class="border-t border-white/10 px-4 py-2 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-red-400/60 text-xs font-mono">{role}</code></td>
+            <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">{desc}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-3">Quotas</h3>
+  <div class="overflow-x-auto mb-6">
+    <table class="w-full border-collapse">
+      <thead>
+        <tr>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm w-20">Method</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Endpoint</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        {[
+          ['GET',    '/quotas/',                'List quotas (filter by tenantId, quotaType)'],
+          ['GET',    '/quotas/tenant/:id',      'Get tenant quotas with live status'],
+          ['POST',   '/quotas/',                'Create quota'],
+          ['PATCH',  '/quotas/:id',             'Update quota'],
+          ['DELETE', '/quotas/:id',             'Delete quota'],
+          ['POST',   '/quotas/reset',           'Manual period reset'],
+        ].map(([method, path, desc]) => (
+          <tr>
+            <td class="border-t border-white/10 px-4 py-2 text-sm">
+              <span class={`inline-block px-1.5 py-0.5 rounded text-xs font-mono font-semibold ${
+                method === 'GET' ? 'bg-green-500/10 text-green-400' :
+                method === 'POST' ? 'bg-blue-500/10 text-blue-400' :
+                method === 'PATCH' ? 'bg-purple-500/10 text-purple-400' :
+                method === 'DELETE' ? 'bg-red-500/10 text-red-400' :
+                'bg-orange-500/10 text-orange-400'
+              }`}>{method}</span>
+            </td>
+            <td class="border-t border-white/10 px-4 py-2 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-white/60 text-xs font-mono">{path}</code></td>
+            <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">{desc}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-3">Experiments</h3>
+  <div class="overflow-x-auto mb-6">
+    <table class="w-full border-collapse">
+      <thead>
+        <tr>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm w-20">Method</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Endpoint</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        {[
+          ['GET',    '/experiments/',                'List experiments'],
+          ['GET',    '/experiments/:id',             'Get experiment'],
+          ['POST',   '/experiments/',                'Create experiment (draft)'],
+          ['PATCH',  '/experiments/:id',             'Update experiment'],
+          ['DELETE', '/experiments/:id',             'Delete experiment'],
+          ['GET',    '/experiments/:id/results',     'Get analysis with z-test'],
+          ['POST',   '/experiments/:id/start',       'Start experiment'],
+          ['POST',   '/experiments/:id/stop',        'Stop experiment'],
+        ].map(([method, path, desc]) => (
+          <tr>
+            <td class="border-t border-white/10 px-4 py-2 text-sm">
+              <span class={`inline-block px-1.5 py-0.5 rounded text-xs font-mono font-semibold ${
+                method === 'GET' ? 'bg-green-500/10 text-green-400' :
+                method === 'POST' ? 'bg-blue-500/10 text-blue-400' :
+                method === 'PATCH' ? 'bg-purple-500/10 text-purple-400' :
+                method === 'DELETE' ? 'bg-red-500/10 text-red-400' :
+                'bg-orange-500/10 text-orange-400'
+              }`}>{method}</span>
+            </td>
+            <td class="border-t border-white/10 px-4 py-2 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-white/60 text-xs font-mono">{path}</code></td>
+            <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">{desc}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-3">Webhooks</h3>
+  <div class="overflow-x-auto mb-6">
+    <table class="w-full border-collapse">
+      <thead>
+        <tr>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm w-20">Method</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Endpoint</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        {[
+          ['GET',    '/webhooks/',                   'List webhooks'],
+          ['GET',    '/webhooks/:id',                'Get webhook'],
+          ['POST',   '/webhooks/',                   'Create webhook (auto-generates HMAC secret)'],
+          ['PATCH',  '/webhooks/:id',                'Update webhook'],
+          ['DELETE', '/webhooks/:id',                'Delete webhook'],
+          ['POST',   '/webhooks/:id/test',           'Send test event'],
+          ['GET',    '/webhooks/:id/logs',           'Get delivery log'],
+          ['POST',   '/webhooks/:id/rotate-secret',  'Rotate HMAC secret'],
+        ].map(([method, path, desc]) => (
+          <tr>
+            <td class="border-t border-white/10 px-4 py-2 text-sm">
+              <span class={`inline-block px-1.5 py-0.5 rounded text-xs font-mono font-semibold ${
+                method === 'GET' ? 'bg-green-500/10 text-green-400' :
+                method === 'POST' ? 'bg-blue-500/10 text-blue-400' :
+                method === 'PATCH' ? 'bg-purple-500/10 text-purple-400' :
+                method === 'DELETE' ? 'bg-red-500/10 text-red-400' :
+                'bg-orange-500/10 text-orange-400'
+              }`}>{method}</span>
+            </td>
+            <td class="border-t border-white/10 px-4 py-2 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-white/60 text-xs font-mono">{path}</code></td>
+            <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">{desc}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-3">Multi-Key</h3>
+  <div class="overflow-x-auto mb-6">
+    <table class="w-full border-collapse">
+      <thead>
+        <tr>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm w-20">Method</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Endpoint</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        {[
+          ['GET',    '/tenants/:id/keys',              'List all API keys'],
+          ['POST',   '/tenants/:id/keys',              'Add auto-generated key'],
+          ['POST',   '/tenants/:id/keys/custom',       'Add custom key'],
+          ['PATCH',  '/tenants/:id/keys/:keyId',       'Update key (enable/disable, label)'],
+          ['DELETE', '/tenants/:id/keys/:keyId',       'Revoke key'],
+        ].map(([method, path, desc]) => (
+          <tr>
+            <td class="border-t border-white/10 px-4 py-2 text-sm">
+              <span class={`inline-block px-1.5 py-0.5 rounded text-xs font-mono font-semibold ${
+                method === 'GET' ? 'bg-green-500/10 text-green-400' :
+                method === 'POST' ? 'bg-blue-500/10 text-blue-400' :
+                method === 'PATCH' ? 'bg-purple-500/10 text-purple-400' :
+                method === 'DELETE' ? 'bg-red-500/10 text-red-400' :
+                'bg-orange-500/10 text-orange-400'
+              }`}>{method}</span>
+            </td>
+            <td class="border-t border-white/10 px-4 py-2 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-white/60 text-xs font-mono">{path}</code></td>
+            <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">{desc}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Tenant Portal API</h2>
+  <p class="text-white/55 leading-relaxed mb-4">Self-service API for the <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">tenant-admin</code> role.</p>
+  <p class="text-white/55 text-sm mb-4"><span class="text-white/40 uppercase text-xs font-semibold">Base URL:</span> <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">https://your-host/api/tenant-portal</code></p>
+  <div class="overflow-x-auto mb-6">
+    <table class="w-full border-collapse">
+      <thead>
+        <tr>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm w-20">Method</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Endpoint</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        {[
+          ['GET', '/mine',                  'List own tenants'],
+          ['GET', '/:id',                   'Get tenant config'],
+          ['PUT', '/:id/model-config',      'Update model access (mode + list)'],
+          ['GET', '/:id/models',            'List accessible models'],
+        ].map(([method, path, desc]) => (
+          <tr>
+            <td class="border-t border-white/10 px-4 py-2 text-sm">
+              <span class={`inline-block px-1.5 py-0.5 rounded text-xs font-mono font-semibold ${
+                method === 'GET' ? 'bg-green-500/10 text-green-400' : 'bg-orange-500/10 text-orange-400'
+              }`}>{method}</span>
+            </td>
+            <td class="border-t border-white/10 px-4 py-2 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-white/60 text-xs font-mono">{path}</code></td>
+            <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">{desc}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Global Endpoints</h2>
+  <div class="overflow-x-auto mb-6">
+    <table class="w-full border-collapse">
+      <thead>
+        <tr>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm w-20">Method</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Endpoint</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Auth</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        {[
+          ['GET',  '/health',                      'None', 'Server health + DB status'],
+          ['GET',  '/metrics',                     'None', 'Prometheus metrics'],
+          ['GET',  '/api/prism/setup/status',      'None', 'Whether first-run setup is complete'],
+          ['POST', '/api/prism/setup/admin',       'None', 'Create initial admin account (setup only)'],
+          ['POST', '/api/prism/auth/login',        'None', 'Login → JWT'],
+          ['GET',  '/api/prism/auth/me',           'JWT',  'Current user info'],
+        ].map(([method, path, auth, desc]) => (
+          <tr>
+            <td class="border-t border-white/10 px-4 py-2 text-sm">
+              <span class={`inline-block px-1.5 py-0.5 rounded text-xs font-mono font-semibold ${
+                method === 'GET' ? 'bg-green-500/10 text-green-400' : 'bg-blue-500/10 text-blue-400'
+              }`}>{method}</span>
+            </td>
+            <td class="border-t border-white/10 px-4 py-2 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-white/60 text-xs font-mono">{path}</code></td>
+            <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">{auth}</td>
+            <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">{desc}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+
+</DocsPage>

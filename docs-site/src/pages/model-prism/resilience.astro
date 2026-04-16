@@ -1,0 +1,160 @@
+---
+import DocsPage from '../../layouts/DocsPage.astro';
+---
+
+<DocsPage title="Resilience & Fallback — Model Prism" description="Provider fallback chains, circuit breaker, context overflow handling, and cross-provider failover in Model Prism.">
+
+  <h1 class="text-3xl font-bold text-white mb-6">Resilience & Auto-Failover</h1>
+  <p class="text-white/55 leading-relaxed mb-4">
+    Model Prism provides production-grade resilience for production AI workloads. When a provider fails, requests are automatically retried on fallback providers — ensuring zero downtime for end users.
+  </p>
+
+  <div class="rounded-xl border border-teal-500/20 bg-teal-500/5 p-4 mb-8">
+    <p class="text-teal-300 text-sm font-medium mb-2">Use Case: Production Chat Bot</p>
+    <p class="text-white/50 text-sm">
+      A customer-facing chat bot runs on Claude Sonnet via AWS Bedrock. During an AWS outage, Model Prism automatically fails over to Azure GPT-5.3 — the customer gets a response without noticing any disruption.
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Provider Fallback Chains</h2>
+  <p class="text-white/55 leading-relaxed mb-4">
+    Fallback chains define the order in which providers are tried when a request fails. Configure them per tenant in the <strong class="text-white/80">Resilience</strong> tab.
+  </p>
+
+  <h3 class="text-lg font-semibold text-white mt-6 mb-3">Default Chain</h3>
+  <p class="text-white/55 leading-relaxed mb-4">
+    The default chain (pattern <code class="text-teal-300">*</code>) applies to all models. Providers are tried in order — the first one that has the requested model and is healthy receives the request.
+  </p>
+  <pre class="bg-[#0d0d14] border border-white/10 rounded-lg p-4 text-sm text-white/70 mb-4 overflow-x-auto">Example: aws-bedrock → azure-openai → ollama-local
+
+Request for "claude-sonnet-4-6":
+  1. Try aws-bedrock    → 502 Bad Gateway (outage)
+  2. Try azure-openai   → Model not found (Azure has GPT, not Claude)
+  3. Try ollama-local   → Success! Response returned from local Ollama</pre>
+
+  <h3 class="text-lg font-semibold text-white mt-6 mb-3">Model-Specific Chains</h3>
+  <p class="text-white/55 leading-relaxed mb-4">
+    Override the default chain for specific models. For example, route all GPT models through Azure first:
+  </p>
+  <pre class="bg-[#0d0d14] border border-white/10 rounded-lg p-4 text-sm text-white/70 mb-4 overflow-x-auto">Pattern: "gpt-5.*"
+Chain: azure-openai → aws-bedrock</pre>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Circuit Breaker</h2>
+  <p class="text-white/55 leading-relaxed mb-4">
+    The built-in circuit breaker automatically detects failing providers and temporarily removes them from the rotation. This prevents cascading failures and reduces latency.
+  </p>
+
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+    <div class="rounded-xl border border-white/10 bg-[#0d0d14] p-4">
+      <div class="flex items-center gap-2 mb-2">
+        <span class="w-2 h-2 rounded-full bg-green-400"></span>
+        <p class="text-white/80 font-medium text-sm">CLOSED</p>
+      </div>
+      <p class="text-white/50 text-sm">Normal operation. All requests pass through.</p>
+    </div>
+    <div class="rounded-xl border border-white/10 bg-[#0d0d14] p-4">
+      <div class="flex items-center gap-2 mb-2">
+        <span class="w-2 h-2 rounded-full bg-red-400"></span>
+        <p class="text-white/80 font-medium text-sm">OPEN</p>
+      </div>
+      <p class="text-white/50 text-sm">Provider failing. Requests skip this provider for 60 seconds.</p>
+    </div>
+    <div class="rounded-xl border border-white/10 bg-[#0d0d14] p-4">
+      <div class="flex items-center gap-2 mb-2">
+        <span class="w-2 h-2 rounded-full bg-yellow-400"></span>
+        <p class="text-white/80 font-medium text-sm">HALF-OPEN</p>
+      </div>
+      <p class="text-white/50 text-sm">Testing recovery. A few probe requests are sent to check if the provider is back.</p>
+    </div>
+  </div>
+
+  <p class="text-white/55 leading-relaxed mb-4">
+    <strong class="text-white/80">Thresholds:</strong> 5 consecutive failures opens the circuit. After 60 seconds, 2 test requests are allowed through. If they succeed, the circuit closes and normal traffic resumes.
+  </p>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Context Overflow Handling</h2>
+  <p class="text-white/55 leading-relaxed mb-4">
+    When a request exceeds a model's context window, Model Prism automatically:
+  </p>
+  <ol class="list-decimal list-inside text-white/55 mb-4 space-y-2">
+    <li><strong class="text-white/80">Auto-upgrade</strong> — finds a model with a larger context window and retries</li>
+    <li><strong class="text-white/80">Truncation</strong> — if no larger model is available, truncates older messages (keeping the system prompt and most recent user message) and retries</li>
+  </ol>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Cross-Provider Model Fallback</h2>
+  <p class="text-white/55 leading-relaxed mb-4">
+    When a request targets a specific provider (e.g. <code class="text-teal-300">aws/claude-sonnet-4-6</code>) but that provider is not assigned to the tenant, Model Prism automatically searches all assigned providers for the same model. This ensures requests succeed even with misconfigured provider prefixes.
+  </p>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Model-Level Fallbacks</h2>
+  <p class="text-white/55 leading-relaxed mb-4">
+    Provider fallback chains handle <em>provider</em> outages. Model-level fallbacks go one step further: when a specific model fails across all provider retries, the request can automatically be retried on a different model. Configure up to 4 fallback steps per rule in <strong class="text-white/80">Admin UI → Tenants → [tenant] → Resilience → Model Fallbacks</strong>.
+  </p>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+    <div class="rounded-xl border border-white/10 bg-[#0d0d14] p-4">
+      <p class="text-white/80 font-medium text-sm mb-2">Specific</p>
+      <p class="text-white/50 text-sm mb-3">An explicit ordered list of (model, optional provider) pairs to try. Use this when you want exact control — e.g. degrade from <code class="text-teal-300">claude-opus-4-6</code> to <code class="text-teal-300">claude-sonnet-4-6</code>, then to a local Ollama model.</p>
+      <pre class="bg-black/30 rounded p-2 text-xs text-white/60 overflow-x-auto">opus-4-6 → sonnet-4-6 → ollama/llama3</pre>
+    </div>
+    <div class="rounded-xl border border-white/10 bg-[#0d0d14] p-4">
+      <p class="text-white/80 font-medium text-sm mb-2">Next Tier Within Provider</p>
+      <p class="text-white/50 text-sm mb-3">Automatically steps down to the next lower cost tier on the same provider — no manual list needed. Model Prism resolves the sequence at runtime using the model registry tier ordering.</p>
+      <pre class="bg-black/30 rounded p-2 text-xs text-white/60 overflow-x-auto">ultra → advanced → standard → economy</pre>
+    </div>
+  </div>
+
+  <h3 class="text-lg font-semibold text-white mt-6 mb-3">When Model Fallbacks Apply</h3>
+  <ol class="list-decimal list-inside text-white/55 mb-4 space-y-1">
+    <li>All providers in the fallback chain for the original model have been tried</li>
+    <li>All retries are exhausted and the request has still not succeeded</li>
+    <li>Model Prism walks the model fallback sequence and retries on the next (model, provider) pair</li>
+  </ol>
+  <p class="text-white/55 leading-relaxed mb-4">Model fallbacks apply to both streaming and non-streaming requests. A successful model fallback is reflected in the response via the <code class="text-teal-300">auto_routing</code> metadata field.</p>
+
+  <h3 class="text-lg font-semibold text-white mt-6 mb-3">API Configuration</h3>
+  <p class="text-white/55 leading-relaxed mb-4">Model fallbacks are configured per tenant via the Tenant API. The <code class="text-teal-300">modelFallbacks</code> array is separate from <code class="text-teal-300">fallbackChains</code>:</p>
+  <pre class="bg-[#0d0d14] border border-white/10 rounded-lg p-4 text-sm text-white/70 mb-6 overflow-x-auto">PUT /api/prism/admin/tenants/:id
+
+&#123;
+  "modelFallbacks": [
+    &#123;
+      "type": "specific",
+      "sourcePattern": "claude-opus-4-6",
+      "fallbacks": [
+        &#123; "model": "claude-sonnet-4-6" &#125;,
+        &#123; "model": "claude-haiku-4-5", "providerId": "&lt;bedrock-provider-id&gt;" &#125;
+      ]
+    &#125;,
+    &#123;
+      "type": "next-tier",
+      "sourcePattern": "gpt-4.*"
+    &#125;
+  ]
+&#125;</pre>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Configuration</h2>
+  <p class="text-white/55 leading-relaxed mb-4">
+    Configure fallback chains in the <strong class="text-white/80">Admin UI → Tenants → [tenant] → Resilience</strong> tab. The tab also shows the current circuit breaker status for all providers assigned to the tenant.
+  </p>
+
+  <h3 class="text-lg font-semibold text-white mt-6 mb-3">API Configuration</h3>
+  <p class="text-white/55 leading-relaxed mb-4">Fallback chains can also be configured via the Tenant API:</p>
+  <pre class="bg-[#0d0d14] border border-white/10 rounded-lg p-4 text-sm text-white/70 mb-4 overflow-x-auto">PUT /api/prism/admin/tenants/:id
+
+&#123;
+  "fallbackChains": [
+    &#123;
+      "modelPattern": "*",
+      "providers": ["&lt;provider-id-1&gt;", "&lt;provider-id-2&gt;"],
+      "maxRetries": 2
+    &#125;,
+    &#123;
+      "modelPattern": "gpt-5.*",
+      "providers": ["&lt;azure-provider-id&gt;", "&lt;bedrock-provider-id&gt;"],
+      "maxRetries": 1
+    &#125;
+  ]
+&#125;</pre>
+
+</DocsPage>

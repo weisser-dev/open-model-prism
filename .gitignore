@@ -1,0 +1,23 @@
+tmp/
+node_modules/
+dist/
+.env
+*.log
+.DS_Store
+frontend/dist/
+frontend/dist-demo/
+server/public/
+dependencies/
+docs-site/dist/
+docs-site/node_modules/
+
+# Local tooling — must never be committed
+.claude/
+.claude-flow/
+.swarm/
+.mcp.json
+email.txt
+opencode.json
+frontend/.claude-flow/
+frontend/src/.claude-flow/
+.idea/

@@ -1,0 +1,297 @@
+---
+import DocsPage from '../../layouts/DocsPage.astro';
+---
+
+<DocsPage title="Providers — Model Prism" description="Supported LLM provider types, model discovery, connection management, and the model registry in Open Model Prism.">
+
+  <h1 class="text-3xl font-bold text-white mb-6">Provider Management</h1>
+  <p class="text-white/55 leading-relaxed mb-4">A <strong class="text-white/80">provider</strong> is any LLM backend that Open Model Prism can forward requests to. Multiple providers can be connected simultaneously; each tenant selects which providers it has access to.</p>
+
+  <h2 id="supported-provider-types" class="text-2xl font-semibold text-white mt-10 mb-4">Supported Provider Types</h2>
+  <div class="overflow-x-auto mb-6">
+    <table class="w-full border-collapse">
+      <thead>
+        <tr>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Type</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Description</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">openai</code></td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">OpenAI Compatible</td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Direct API key auth. Covers OpenAI, LitServe, LocalAI, LM Studio, and any OpenAI-compatible endpoint.</td>
+        </tr>
+        <tr>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">bedrock</code></td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">AWS Bedrock Native</td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Converse API, Access Key + Secret, VPC endpoint support, IAM roles (default credential chain), streaming, tool calling</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-2">Bedrock VPC Endpoint Support</h3>
+  <p class="text-white/55 leading-relaxed mb-4">For private connectivity via AWS PrivateLink, enable "Use custom VPC endpoints" in the provider form. Two separate endpoints are supported: one for the Runtime (Converse API chat/streaming) and one for the Control Plane (model listing). Most users don't need this — the default public AWS endpoints work without configuration.</p>
+  <p class="text-white/55 leading-relaxed mb-4">The Bedrock adapter supports HTTP proxies via the provider's proxy setting. This is required in corporate networks where VPC endpoints are only reachable through a proxy server. The proxy is applied to both Runtime and Control Plane connections.</p>
+
+  <div class="overflow-x-auto mb-6">
+    <table class="w-full border-collapse">
+      <thead>
+        <tr>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Type</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Description</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">bedrock-proxy</code></td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">AWS Bedrock via Proxy</td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Legacy option for OpenAI-compatible Bedrock proxies (e.g. bedrock-access-gateway)</td>
+        </tr>
+        <tr>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">azure</code></td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Azure OpenAI Native</td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Deployment-based routing, api-key header auth, configurable API version, auto-fetches models from Azure <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">/openai/models</code> API</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-2">Azure Deployment Configuration</h3>
+  <p class="text-white/55 leading-relaxed mb-4">Azure does not support listing deployments via the Data Plane API. You must configure deployment names manually. During model discovery, Model Prism automatically detects which deployments use the Chat Completions API and which use the newer Responses API (e.g. gpt-5.3-codex). See the Azure REST API specs for details.</p>
+
+  <div class="overflow-x-auto mb-6">
+    <table class="w-full border-collapse">
+      <thead>
+        <tr>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Type</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Description</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">azure-proxy</code></td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Azure OpenAI via Proxy</td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Legacy option for existing OpenAI-compatible Azure proxy setups</td>
+        </tr>
+        <tr>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">ollama</code></td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Ollama</td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Local models. Probes <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">/api/tags</code> for model list; falls back to OpenAI-compat</td>
+        </tr>
+        <tr>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">vllm</code></td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">vLLM</td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Self-hosted, OpenAI-compatible inference server</td>
+        </tr>
+        <tr>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">openrouter</code></td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">OpenRouter</td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Multi-provider aggregator; OpenAI-compatible; auto-discovers 100+ models</td>
+        </tr>
+        <tr>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">custom</code></td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Custom</td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Any OpenAI-compatible endpoint; generic fallback for unlisted providers</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 id="authentication-methods" class="text-2xl font-semibold text-white mt-10 mb-4">Authentication Methods</h2>
+  <p class="text-white/55 leading-relaxed mb-4">Different provider types use different authentication mechanisms:</p>
+  <div class="overflow-x-auto mb-6">
+    <table class="w-full border-collapse">
+      <thead>
+        <tr>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Method</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Provider Types</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Details</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">API Key</td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">openai</code>, <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">azure</code>, <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">openrouter</code></td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Sent via <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">Authorization: Bearer</code> header (OpenAI/OpenRouter) or <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">api-key</code> header (Azure)</td>
+        </tr>
+        <tr>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">AWS Credentials</td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">bedrock</code></td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Access Key ID + Secret Access Key, used to sign AWS SigV4 requests</td>
+        </tr>
+        <tr>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">IAM Role</td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">bedrock</code></td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Default credential chain — automatic on EC2, ECS, or Lambda with an attached IAM role</td>
+        </tr>
+        <tr>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">None</td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">ollama</code>, local endpoints</td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">No authentication required for local inference servers</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 id="per-provider-proxy" class="text-2xl font-semibold text-white mt-10 mb-4">Per-Provider Proxy</h2>
+  <p class="text-white/55 leading-relaxed mb-4">Each provider can optionally route all outbound HTTP requests through an HTTP proxy. This is useful in corporate networks where some providers require a proxy to reach the internet while others are accessible directly or via private endpoints.</p>
+  <ul class="list-disc ml-6 text-white/55 space-y-1 mb-4">
+    <li>Enable the <strong class="text-white/80">Use HTTP Proxy</strong> toggle in the provider form</li>
+    <li>Enter the proxy URL (e.g. <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">http://proxy.corp.example:8080</code>)</li>
+    <li>The proxy setting is per-provider — different providers can use different proxies, or no proxy at all</li>
+    <li>Supports HTTP and HTTPS proxy URLs</li>
+  </ul>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Adding a Provider</h2>
+  <ol class="list-decimal ml-6 text-white/55 space-y-1 mb-4">
+    <li>Go to <strong class="text-white/80">Providers</strong> in the sidebar</li>
+    <li>Click <strong class="text-white/80">Add Provider</strong></li>
+    <li>Enter a name and select the provider type</li>
+    <li>Enter the <strong class="text-white/80">Base URL</strong> — do not include <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">/v1</code> or <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">/api/v1</code> (auto-detected)</li>
+    <li>Enter the <strong class="text-white/80">API Key</strong> (leave empty for local providers like Ollama)</li>
+    <li>Click <strong class="text-white/80">Test Connection</strong> — the connection check probes multiple path variants and logs results</li>
+    <li>Click <strong class="text-white/80">Discover Models</strong> to auto-populate the model list</li>
+  </ol>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-2">URL Detection</h3>
+  <p class="text-white/55 leading-relaxed mb-4">Open Model Prism automatically detects the correct API path by probing:</p>
+  <ul class="list-disc ml-6 text-white/55 space-y-1 mb-4">
+    <li><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">&lt;baseUrl&gt;/v1/models</code></li>
+    <li><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">&lt;baseUrl&gt;/api/v1/models</code></li>
+    <li><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">&lt;baseUrl&gt;/models</code></li>
+  </ul>
+  <p class="text-white/55 leading-relaxed mb-4">The detected path is stored as <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">config.options.apiPath</code> and used for all subsequent requests.</p>
+  <p class="text-white/55 leading-relaxed mb-4">The setup wizard and provider form both warn if the URL contains a <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">/v1</code> suffix and offer a one-click auto-fix.</p>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-2">HTTP &rarr; HTTPS Upgrade</h3>
+  <p class="text-white/55 leading-relaxed mb-4">If a connection test succeeds over HTTP but fails over HTTPS, the form suggests switching to HTTPS. If it succeeds over HTTP only, a warning is shown — the connection works but HTTPS is recommended.</p>
+
+  <h2 id="model-discovery" class="text-2xl font-semibold text-white mt-10 mb-4">Model Discovery</h2>
+  <p class="text-white/55 leading-relaxed mb-4">After a successful connection test, click <strong class="text-white/80">Discover Models</strong> (or the provider form triggers it automatically). The discovery process:</p>
+  <ol class="list-decimal ml-6 text-white/55 space-y-1 mb-4">
+    <li>Fetches <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">/v1/models</code> from the provider</li>
+    <li>For each model: looks up the local model registry (<code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">modelRegistry.js</code>) for tier, pricing, categories, and benchmark scores</li>
+    <li>Falls back to <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">models.dev</code> API (or offline snapshot if <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">OFFLINE=true</code>) for additional enrichment</li>
+    <li>Saves results to <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">provider.discoveredModels[]</code></li>
+  </ol>
+  <p class="text-white/55 leading-relaxed mb-4">Discovered models can be individually edited in the <strong class="text-white/80">Models</strong> page:</p>
+  <ul class="list-disc ml-6 text-white/55 space-y-1 mb-4">
+    <li>Adjust tier and priority within tier (affects routing order)</li>
+    <li>Override input/output pricing (USD per 1M tokens)</li>
+    <li>Assign routing categories</li>
+    <li>Toggle visibility (<code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">visible=false</code> hides from tenant model lists but remains visible to admins, greyed out)</li>
+  </ul>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-2">Editable Context Window & Max Output Tokens</h3>
+  <p class="text-white/55 leading-relaxed mb-4">The Models page now allows editing <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">contextWindow</code> and <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">maxOutputTokens</code> per model (previously read-only).</p>
+  <ul class="list-disc ml-6 text-white/55 space-y-1 mb-4">
+    <li>When manually set, values are protected from refresh override via the <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">manualContext</code> flag (same pattern as <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">manualPricing</code>)</li>
+    <li>On model discover/refresh: if <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">manualContext</code> is not set, context values are enriched from the registry</li>
+  </ul>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-2">Auto-Refresh Pricing on Discover</h3>
+  <p class="text-white/55 leading-relaxed mb-4">Provider-specific pricing tables override generic registry pricing during model discovery. Pricing is refreshed on every discover unless the admin set it manually (<code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">manualPricing: true</code>).</p>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-2">Bulk Visibility Toggle</h3>
+  <ul class="list-disc ml-6 text-white/55 space-y-1 mb-4">
+    <li><strong class="text-white/80">"Show selected" / "Hide selected"</strong> buttons in the Models page bulk action bar</li>
+    <li>Hidden models are excluded from tenant routing selectors (classifier, default, baseline, fallback)</li>
+    <li>Hidden models still appear in whitelist/blacklist config with a <strong class="text-white/80">"hidden"</strong> badge</li>
+  </ul>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-2">Model Search & Bulk Selection</h3>
+  <ul class="list-disc ml-6 text-white/55 space-y-1 mb-4">
+    <li>Search field to filter models by name in the Models page</li>
+    <li><strong class="text-white/80">"Select all / Deselect all"</strong> buttons that operate on filtered results</li>
+    <li>Shift-click selects/deselects a range of models</li>
+  </ul>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-2">Auto-Suggest</h3>
+  <p class="text-white/55 leading-relaxed mb-4">Each model in the registry has an <strong class="text-white/80">Auto-Suggest</strong> button (wand icon) that fills tier, pricing, and categories from the built-in model registry using fuzzy matching. The matching logic runs three passes:</p>
+  <ol class="list-decimal ml-6 text-white/55 space-y-1 mb-4">
+    <li>Exact ID match</li>
+    <li>Registry pattern is a substring of the model ID</li>
+    <li>Model ID is a substring of the registry pattern</li>
+  </ol>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Model Registry</h2>
+  <p class="text-white/55 leading-relaxed mb-4">The local model registry (<code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">server/data/modelRegistry.js</code>) contains metadata for 60+ models. Each model is assigned one of eight cost tiers: <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">micro</code>, <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">minimal</code>, <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">low</code>, <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">medium</code>, <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">advanced</code>, <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">high</code>, <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">ultra</code>, or <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">critical</code>.</p>
+  <pre class="bg-[#0d0d14] border border-white/10 rounded-lg p-4 overflow-x-auto text-sm text-white/70 mb-6 font-mono"><code>&#123;
+  id:            'claude-opus-4-6',
+  family:        'claude',
+  vendor:        'Anthropic',
+  tier:          'ultra',           // 8 tiers: micro, minimal, low, medium, advanced, high, ultra, critical
+  inputPer1M:    5.00,    // USD
+  outputPer1M:   25.00,   // USD
+  contextWindow: 1000000,
+  categories:    ['reasoning_formal', 'code_generation', 'system_design'],
+  patterns:      ['opus46', 'opus-4-6', 'claude-opus-4-6'],
+  benchmarks: &#123;
+    intelligence: 93,
+    coding:       89,
+    math:         88,
+    speed:        25,    // 0=slow, 100=fast
+  &#125;
+&#125;</code></pre>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-2">Benchmark Scores</h3>
+  <p class="text-white/55 leading-relaxed mb-4">Benchmark scores (0-100 scale) are sourced from public benchmarks (ArtificialAnalysis, LMArena, HumanEval, MATH-500) and used by the routing engine to select the most capable model for a given task type.</p>
+  <div class="overflow-x-auto mb-6">
+    <table class="w-full border-collapse">
+      <thead>
+        <tr>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Axis</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Source benchmarks</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Used for routing categories</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">intelligence</code></td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">MMLU, GPQA, LMSYS Arena</td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">General reasoning, research, document understanding</td>
+        </tr>
+        <tr>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">coding</code></td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">HumanEval, SWE-bench</td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Code generation, debugging, security review</td>
+        </tr>
+        <tr>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">math</code></td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">MATH-500, AIME</td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Reasoning formal, STEM science</td>
+        </tr>
+        <tr>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">speed</code></td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Time-to-first-token, throughput</td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Latency-sensitive routing</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Connection Check</h2>
+  <p class="text-white/55 leading-relaxed mb-4">The connection check (<code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">POST /api/prism/admin/providers/:id/check</code>) runs a detailed diagnostic:</p>
+  <pre class="bg-[#0d0d14] border border-white/10 rounded-lg p-4 overflow-x-auto text-sm text-white/70 mb-6 font-mono"><code>&#10003; Resolved base URL: https://api.openai.com
+&#10003; GET /v1/models returned 200
+&#10003; Found 47 models
+&#10003; Test chat request succeeded (model: gpt-4o-mini)
+&#10003; Streaming test succeeded</code></pre>
+  <p class="text-white/55 leading-relaxed mb-4">Each line is logged and displayed in the UI. If the check fails at any step, the log shows exactly where to help diagnose the issue.</p>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Provider Adapters</h2>
+  <p class="text-white/55 leading-relaxed mb-4">All provider adapters extend <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">BaseAdapter</code> and implement:</p>
+  <ul class="list-disc ml-6 text-white/55 space-y-1 mb-4">
+    <li><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">chat(request)</code> — non-streaming chat completions</li>
+    <li><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">stream(request, onChunk)</code> — streaming chat completions</li>
+    <li><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">embed(request)</code> — embeddings</li>
+    <li><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">listModels()</code> — model discovery</li>
+  </ul>
+  <p class="text-white/55 leading-relaxed mb-4">The OpenAI-compatible adapter handles the majority of providers. Ollama has a custom adapter that translates between the Ollama format and OpenAI format. Azure OpenAI has a native adapter with deployment-based routing, <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">api-key</code> header auth, and auto-model-fetch; a legacy <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">azure-proxy</code> type is available for existing OpenAI-compatible proxy setups. AWS Bedrock has a native adapter that calls the Converse/ConverseStream API directly (no proxy needed); a legacy <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">bedrock-proxy</code> type is available for existing OpenAI-compatible proxy setups.</p>
+
+</DocsPage>

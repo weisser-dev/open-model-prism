@@ -1,0 +1,121 @@
+---
+interface Props {
+  currentPath: string;
+}
+
+const { currentPath } = Astro.props;
+
+const normalize = (path: string) => path.replace(/\/$/, '') || '/';
+const current = normalize(currentPath);
+
+const modelPrismLinks = [
+  { label: 'Overview',         href: '/model-prism' },
+  { label: 'Getting Started',  href: '/model-prism/getting-started', sub: [
+    { label: 'Docker Setup', href: '#docker-compose' },
+    { label: 'Kubernetes / Helm', href: '#kubernetes--helm' },
+  ]},
+  { label: 'Architecture',     href: '/model-prism/architecture', sub: [
+    { label: 'Request Flow', href: '#request-flow' },
+    { label: 'Directory Structure', href: '#directory-structure' },
+  ]},
+  { label: 'Providers',        href: '/model-prism/providers', sub: [
+    { label: 'Provider Types', href: '#supported-provider-types' },
+    { label: 'Authentication', href: '#authentication-methods' },
+    { label: 'Proxy Support', href: '#per-provider-proxy' },
+    { label: 'Model Discovery', href: '#model-discovery' },
+  ]},
+  { label: 'Tenants',          href: '/model-prism/tenants', sub: [
+    { label: 'API Keys', href: '#api-keys' },
+    { label: 'Model Access Control', href: '#model-access-control' },
+    { label: 'Multi-Provider', href: '#multi-provider-tenants' },
+  ]},
+  { label: 'Routing',          href: '/model-prism/routing', sub: [
+    { label: 'Cost Tiers', href: '#cost-tiers' },
+    { label: 'Override Rules', href: '#override-rules' },
+    { label: 'LLM Classifier', href: '#llm-classifier' },
+    { label: 'Cost Mode & Tier Boost', href: '#cost-mode--tier-boost' },
+    { label: 'Test Route', href: '#test-route-dry-run' },
+    { label: 'Synthetic Tests', href: '#synthetic-tests' },
+    { label: 'Tier Cap', href: '#tier-cap' },
+    { label: 'Categories', href: '#routing-categories' },
+  ]},
+  { label: 'Resilience',       href: '/model-prism/resilience', sub: [
+    { label: 'Fallback Chains', href: '#provider-fallback-chains' },
+    { label: 'Model Fallbacks', href: '#model-level-fallbacks' },
+    { label: 'Circuit Breaker', href: '#circuit-breaker' },
+    { label: 'Context Overflow', href: '#context-overflow-handling' },
+  ]},
+  { label: 'Analytics',        href: '/model-prism/analytics', sub: [
+    { label: 'Dashboard', href: '#dashboard' },
+    { label: 'Request Log', href: '#request-log' },
+    { label: 'WebChat', href: '#built-in-webchat' },
+    { label: 'Webhooks', href: '#webhooks--event-notifications' },
+    { label: 'Prometheus', href: '#prometheus-metrics' },
+  ]},
+  { label: 'Prompt Analyses',  href: '/model-prism/prompt-analyses', sub: [
+    { label: 'Scoring Dimensions', href: '#scoring-dimensions' },
+    { label: 'Public Dashboard', href: '#public-dashboard' },
+    { label: 'API', href: '#api' },
+  ]},
+  { label: 'Prompt Optimizer', href: '/model-prism/prompt-optimizer', sub: [
+    { label: 'Integration Modes', href: '#integration-modes' },
+    { label: 'Configuration', href: '#configuration' },
+    { label: 'Per-Tenant Settings', href: '#per-tenant-settings' },
+  ]},
+  { label: 'Operations',       href: '/model-prism/operations', sub: [
+    { label: 'Deployment Modes', href: '#deployment-modes' },
+    { label: 'Scaling', href: '#scaling' },
+    { label: 'Security', href: '#security' },
+    { label: 'Data Maintenance', href: '#data-maintenance' },
+  ]},
+  { label: 'API Reference',    href: '/model-prism/api-reference' },
+  { label: 'RBAC & Roles',     href: '/model-prism/rbac', sub: [
+    { label: 'Roles', href: '#roles' },
+    { label: 'Permission Matrix', href: '#permission-matrix' },
+    { label: 'LDAP', href: '#ldap-integration' },
+    { label: 'Audit Trail', href: '#configuration-audit-trail' },
+  ]},
+];
+---
+
+<nav class="py-6 px-4">
+  <div class="mb-8">
+    <div class="flex items-center gap-2 mb-3 px-2">
+      <img src="/model-prism-logo.svg" width="16" height="16" alt="" class="h-4 w-4 opacity-60" />
+      <h3 class="text-xs font-semibold uppercase tracking-widest text-white/30">Open Model Prism</h3>
+    </div>
+    <ul class="space-y-0.5">
+      {modelPrismLinks.map((link) => {
+        const isActive = current === normalize(link.href);
+        return (
+          <li>
+            <a
+              href={link.href}
+              class={`block px-3 py-1.5 rounded-md text-sm transition-colors duration-150 ${
+                isActive
+                  ? 'text-[#38bdf8] bg-[#38bdf8]/5 font-medium'
+                  : 'text-white/50 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              {link.label}
+            </a>
+            {isActive && link.sub && (
+              <ul class="ml-4 mt-1 mb-1 space-y-0.5 border-l border-white/8 pl-2">
+                {link.sub.map((sub) => (
+                  <li>
+                    <a
+                      href={sub.href}
+                      class="block px-2 py-1 rounded text-xs text-white/35 hover:text-white/70 hover:bg-white/5 transition-colors duration-150"
+                    >
+                      {sub.label}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </li>
+        );
+      })}
+    </ul>
+  </div>
+</nav>

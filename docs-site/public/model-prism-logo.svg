@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none">
+  <!-- Model Prism logomark: prism dispersing light into spectrum -->
+  <defs>
+    <linearGradient id="mp-grad-main" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="50%" stop-color="#818cf8"/>
+      <stop offset="100%" stop-color="#e879f9"/>
+    </linearGradient>
+    <linearGradient id="mp-beam-1" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.8"/>
+      <stop offset="100%" stop-color="#38bdf8" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="mp-beam-2" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#818cf8" stop-opacity="0.8"/>
+      <stop offset="100%" stop-color="#818cf8" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="mp-beam-3" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#e879f9" stop-opacity="0.8"/>
+      <stop offset="100%" stop-color="#e879f9" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Incoming white beam -->
+  <line x1="4" y1="24" x2="16" y2="24" stroke="white" stroke-width="1.5" opacity="0.6"/>
+
+  <!-- Prism triangle -->
+  <polygon
+    points="16,8 32,40 0,40"
+    transform="translate(8, 4) scale(0.75)"
+    fill="none"
+    stroke="url(#mp-grad-main)"
+    stroke-width="1.5"
+    stroke-linejoin="round"
+  />
+
+  <!-- Actual prism centered -->
+  <polygon
+    points="24,10 36,38 12,38"
+    fill="rgba(56,189,248,0.05)"
+    stroke="url(#mp-grad-main)"
+    stroke-width="1.5"
+    stroke-linejoin="round"
+  />
+
+  <!-- Dispersed beams -->
+  <line x1="36" y1="22" x2="46" y2="16" stroke="#38bdf8" stroke-width="1.5" opacity="0.85"/>
+  <line x1="36" y1="26" x2="46" y2="26" stroke="#818cf8" stroke-width="1.5" opacity="0.85"/>
+  <line x1="36" y1="30" x2="46" y2="36" stroke="#e879f9" stroke-width="1.5" opacity="0.85"/>
+
+  <!-- Highlight node -->
+  <circle cx="24" cy="24" r="1.5" fill="white" opacity="0.7"/>
+</svg>

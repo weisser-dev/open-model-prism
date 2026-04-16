@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none" aria-label="ohara Blog">
+  <defs>
+    <linearGradient id="blog-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%"   stop-color="#38bdf8"/>
+      <stop offset="50%"  stop-color="#818cf8"/>
+      <stop offset="100%" stop-color="#e879f9"/>
+    </linearGradient>
+    <filter id="blog-glow" x="-150%" y="-150%" width="400%" height="400%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="1.5" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- Newspaper / page outline -->
+  <rect x="8" y="6" width="32" height="36" rx="3"
+    fill="none" stroke="url(#blog-grad)" stroke-width="1.5" opacity="0.6"/>
+
+  <!-- Fold line -->
+  <line x1="8" y1="16" x2="40" y2="16"
+    stroke="url(#blog-grad)" stroke-width="1" opacity="0.3"/>
+
+  <!-- Headline bar -->
+  <rect x="13" y="9" width="22" height="4" rx="1"
+    fill="url(#blog-grad)" opacity="0.25"/>
+
+  <!-- Text lines -->
+  <g stroke="url(#blog-grad)" stroke-width="1" stroke-linecap="round" opacity="0.3">
+    <line x1="13" y1="21" x2="35" y2="21"/>
+    <line x1="13" y1="25" x2="30" y2="25"/>
+    <line x1="13" y1="29" x2="33" y2="29"/>
+    <line x1="13" y1="33" x2="26" y2="33"/>
+  </g>
+
+  <!-- Small image block (top right corner of content) -->
+  <rect x="28" y="19" width="8" height="8" rx="1.5"
+    fill="url(#blog-grad)" opacity="0.12"/>
+
+  <!-- Glowing dot (new article indicator) -->
+  <circle cx="38" cy="8" r="3" fill="#38bdf8" opacity="0.12"/>
+  <circle cx="38" cy="8" r="2" fill="#38bdf8" opacity="0.85" filter="url(#blog-glow)"/>
+  <circle cx="38" cy="8" r="0.9" fill="white" opacity="0.95"/>
+</svg>

@@ -1,0 +1,146 @@
+---
+import DocsPage from '../../layouts/DocsPage.astro';
+---
+
+<DocsPage title="RBAC & Roles — Model Prism" description="Role-based access control in Model Prism: 8 roles from admin to chat-user, permission matrix, LDAP integration, and failed request resolution.">
+
+  <h1 class="text-3xl font-bold text-white mb-6">RBAC & Roles</h1>
+
+  <p class="text-white/55 leading-relaxed mb-6">Model Prism uses an 8-role RBAC system to control access to the admin UI, gateway, and configuration. Roles are assigned per user and enforced server-side on every API call.</p>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Roles</h2>
+  <div class="overflow-x-auto mb-8">
+    <table class="w-full border-collapse">
+      <thead>
+        <tr>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Role</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Description</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Target User</th>
+        </tr>
+      </thead>
+      <tbody>
+        {[
+          ['admin',              'Full system access — manage everything including users and LDAP.', 'System owner'],
+          ['maintainer',         'Config management — providers, tenants, routing, categories. No user management.', 'Platform / DevOps team'],
+          ['finops',             'Cost visibility — dashboards, savings, quotas, routing config (read-only). No prompt access.', 'Finance / Controlling'],
+          ['auditor',            'Read-only global view — all dashboards, system info, audit trail. No prompt access.', 'Compliance / Security'],
+          ['tenant-maintainer',  'Team lead — key rotation, routing overrides, budget management for assigned tenants. Can see prompts.', 'Team lead'],
+          ['tenant-admin',       'Tenant config — model whitelist/blacklist for assigned tenants.', 'Project manager'],
+          ['tenant-viewer',      'Read-only — dashboard and request logs filtered to assigned tenants. No prompt access.', 'Team member'],
+          ['chat-user',          'Chat only — WebChat access, own usage stats. No admin UI. Default for LDAP users.', 'End user / all employees'],
+        ].map(([role, desc, target]) => (
+          <tr>
+            <td class="border-t border-white/10 px-4 py-2 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">{role}</code></td>
+            <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">{desc}</td>
+            <td class="border-t border-white/10 px-4 py-2 text-white/40 text-sm">{target}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Permission Matrix</h2>
+  <p class="text-white/55 leading-relaxed mb-4">Detailed access per UI page and feature area. <strong class="text-white/80">W</strong> = write, <strong class="text-white/80">R</strong> = read-only, <strong class="text-white/80">Own</strong> = assigned tenants only, <strong class="text-white/80">✓</strong> = full access, <strong class="text-white/80">—</strong> = no access.</p>
+  <div class="overflow-x-auto mb-8">
+    <table class="w-full border-collapse text-center text-sm">
+      <thead>
+        <tr>
+          <th class="bg-white/5 text-left text-white/70 px-3 py-2">Page</th>
+          <th class="bg-white/5 text-white/70 px-2 py-2">admin</th>
+          <th class="bg-white/5 text-white/70 px-2 py-2">maint</th>
+          <th class="bg-white/5 text-white/70 px-2 py-2">finops</th>
+          <th class="bg-white/5 text-white/70 px-2 py-2">auditor</th>
+          <th class="bg-white/5 text-white/70 px-2 py-2">t-maint</th>
+          <th class="bg-white/5 text-white/70 px-2 py-2">t-admin</th>
+          <th class="bg-white/5 text-white/70 px-2 py-2">t-viewer</th>
+          <th class="bg-white/5 text-white/70 px-2 py-2">chat</th>
+        </tr>
+      </thead>
+      <tbody>
+        {[
+          ['Dashboard',       '✓', '✓', '✓', '✓', '✓', '→My', '→My', '—'],
+          ['Chat',            '✓', '✓', '✓', '✓', '✓', '✓', '✓', '✓'],
+          ['Providers',       'W', 'W', '—', '—', '—', '—', '—', '—'],
+          ['Models',          'W', 'W', '—', '—', '—', '—', '—', '—'],
+          ['Tenants',         'W', 'W', 'R', 'R', '—', '—', '—', '—'],
+          ['Categories',      'W', 'W', 'R', 'R', '—', '—', '—', '—'],
+          ['Routing Config',  'W', 'W', 'R', 'R', '—', '—', '—', '—'],
+          ['System',          '✓', '✓', '—', 'R', '—', '—', '—', '—'],
+          ['Request Log',     '✓+P', '✓+P', '✓', '✓', 'Own', '—', 'Own', '—'],
+          ['Failed Requests', '✓+C', '✓+C', '✓', '✓', '—', '—', '—', '—'],
+          ['Users',           '✓', '—', '—', '—', '—', '—', '—', '—'],
+          ['LDAP',            '✓', '—', '—', '—', '—', '—', '—', '—'],
+          ['My Tenant',       '✓', '✓', '—', '—', 'Own', 'Own', 'Own', '—'],
+        ].map(([page, ...perms]) => (
+          <tr>
+            <td class="border-t border-white/10 px-3 py-2 text-left text-white/70 font-medium">{page}</td>
+            {perms.map((p, i) => (
+              <td class={`border-t border-white/10 px-2 py-2 ${p === '—' ? 'text-white/20' : p.includes('W') || p === '✓' || p.includes('+') ? 'text-green-400/80' : p === 'R' ? 'text-blue-400/80' : p === 'Own' || p === '→My' ? 'text-violet-400/80' : 'text-white/50'}`}>{p}</td>
+            ))}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+  <p class="text-white/40 text-sm mb-8"><strong class="text-white/60">Legend:</strong> +P = can view prompt/response snapshots, +C = can clear/resolve errors, →My = redirected to My Tenant page, Own = filtered to assigned tenants</p>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Prompt Snapshot Filtering</h2>
+  <p class="text-white/55 leading-relaxed mb-4">Prompt and response snapshots in request logs are only visible to roles that need them for debugging:</p>
+  <div class="overflow-x-auto mb-6">
+    <table class="w-full border-collapse">
+      <thead>
+        <tr>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Can see prompts</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Cannot see prompts</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="border-t border-white/10 px-4 py-2 text-sm text-green-400/80"><code class="bg-white/5 px-1.5 py-0.5 rounded text-sm font-mono">admin</code>, <code class="bg-white/5 px-1.5 py-0.5 rounded text-sm font-mono">maintainer</code>, <code class="bg-white/5 px-1.5 py-0.5 rounded text-sm font-mono">tenant-maintainer</code></td>
+          <td class="border-t border-white/10 px-4 py-2 text-sm text-white/50"><code class="bg-white/5 px-1.5 py-0.5 rounded text-sm font-mono">finops</code>, <code class="bg-white/5 px-1.5 py-0.5 rounded text-sm font-mono">auditor</code>, <code class="bg-white/5 px-1.5 py-0.5 rounded text-sm font-mono">tenant-admin</code>, <code class="bg-white/5 px-1.5 py-0.5 rounded text-sm font-mono">tenant-viewer</code>, <code class="bg-white/5 px-1.5 py-0.5 rounded text-sm font-mono">chat-user</code></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="text-white/55 leading-relaxed mb-6">Roles without prompt access see cost and routing metadata (model, tier, category, tokens, cost) but the <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">promptSnapshot</code>, <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">responseSnapshot</code>, and <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">capturedPaths</code> fields are stripped server-side.</p>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">LDAP Integration</h2>
+  <p class="text-white/55 leading-relaxed mb-4">When LDAP authentication is enabled, new users are provisioned automatically on first login.</p>
+  <ul class="list-disc ml-6 text-white/55 space-y-2 mb-6">
+    <li><strong class="text-white/80">Default role:</strong> <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">chat-user</code> — new LDAP users get chat-only access by default. This ensures all employees can use the WebChat without needing individual admin setup.</li>
+    <li><strong class="text-white/80">Group mapping:</strong> Map LDAP groups to Model Prism roles in Settings → LDAP. Users inherit the role from their first matching group. Example: <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">cn=ai-admins</code> → <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">admin</code>.</li>
+    <li><strong class="text-white/80">Role override:</strong> Admins can manually override the LDAP-derived role for any user from the Users page.</li>
+    <li><strong class="text-white/80">Available roles for mapping:</strong> <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">maintainer</code>, <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">finops</code>, <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">auditor</code>, <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">tenant-maintainer</code>, <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">tenant-admin</code>, <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">tenant-viewer</code>, <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">chat-user</code></li>
+  </ul>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Configuration Audit Trail</h2>
+  <p class="text-white/55 leading-relaxed mb-4">Every change to routing config, tenant settings, category tiers, and model metadata is tracked automatically with before/after diffs. Visible in the Dashboard → Configuration Changes section.</p>
+  <ul class="list-disc ml-6 text-white/55 space-y-2 mb-6">
+    <li><strong class="text-white/80">Admin:</strong> sees full audit trail with usernames</li>
+    <li><strong class="text-white/80">Other roles:</strong> see what changed but username is anonymized</li>
+    <li><strong class="text-white/80">Retention:</strong> 90 days (auto-deleted via TTL index)</li>
+    <li><strong class="text-white/80">Tracked endpoints:</strong> rule-set create/update, tenant update, category update, model tier/pricing update</li>
+  </ul>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Failed Request Resolution</h2>
+  <p class="text-white/55 leading-relaxed mb-4">The Failed Requests page shows gateway errors. After fixing an issue (e.g. deploying a new version), resolve the old errors to keep the page actionable:</p>
+  <ul class="list-disc ml-6 text-white/55 space-y-2 mb-6">
+    <li><strong class="text-white/80">"Clear all current errors"</strong> — bulk-resolves all errors before the current timestamp. Only <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">admin</code> and <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">maintainer</code> can resolve errors.</li>
+    <li><strong class="text-white/80">Resolved errors hidden by default</strong> — the Failed Requests page filters out resolved errors. New errors after the resolve timestamp are always shown.</li>
+    <li><strong class="text-white/80">Tracking:</strong> each resolved error records <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">resolvedAt</code> and <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">resolvedBy</code> for audit purposes.</li>
+  </ul>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Role Hierarchy</h2>
+  <pre class="bg-[#0d0d14] border border-white/10 rounded-lg p-4 overflow-x-auto text-sm text-white/70 mb-6 font-mono"><code>admin
+├── maintainer
+│   ├── finops  (cost visibility, no prompts)
+│   └── tenant-maintainer  (scoped to assigned tenants)
+│       ├── tenant-admin  (model whitelist only)
+│       └── tenant-viewer  (read-only)
+├── auditor  (read-only global)
+└── chat-user  (chat only, LDAP default)</code></pre>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Changelog</h2>
+  <p class="text-white/55 leading-relaxed mb-4">After each update, a changelog modal appears automatically on login showing what's new. Access it anytime via <strong class="text-white/80">Help → Changelog</strong> in the sidebar. The changelog is generated from <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">CHANGELOG.md</code> and served via <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">GET /api/prism/admin/system/changelog</code>.</p>
+
+</DocsPage>

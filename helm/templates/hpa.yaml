@@ -1,0 +1,30 @@
+{{- if and (eq .Values.mode "scaled") .Values.scaled.worker.autoscaling.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "model-prism.fullname" . }}-worker
+  labels:
+    {{- include "model-prism.workerLabels" . | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "model-prism.fullname" . }}-worker
+  minReplicas: {{ .Values.scaled.worker.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.scaled.worker.autoscaling.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.scaled.worker.autoscaling.targetCPUUtilization }}
+    {{- if .Values.scaled.worker.autoscaling.targetMemoryUtilization }}
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.scaled.worker.autoscaling.targetMemoryUtilization }}
+    {{- end }}
+{{- end }}

@@ -1,0 +1,230 @@
+# ============================================================================
+# Open Model Prism Helm Chart — values.yaml
+# ============================================================================
+# Full configuration reference:
+#   https://github.com/weisser-dev/open-model-prism
+# ============================================================================
+
+# -- Deployment mode: "standalone" or "scaled"
+# standalone: single deployment with NODE_ROLE=full (+ optional built-in MongoDB)
+# scaled:     separate control plane (NODE_ROLE=control) + workers (NODE_ROLE=worker)
+mode: standalone
+
+# ============================================================================
+# Image
+# ============================================================================
+
+image:
+  # -- Container image repository
+  repository: ghcr.io/weisser-dev/open-model-prism
+  # -- Image tag (defaults to Chart appVersion if empty)
+  tag: ""
+  # -- Image pull policy
+  pullPolicy: IfNotPresent
+
+# -- Image pull secrets for private registries
+imagePullSecrets: []
+
+# -- Override the full name of resources
+nameOverride: ""
+fullnameOverride: ""
+
+# ============================================================================
+# Standalone mode settings (mode: standalone)
+# ============================================================================
+
+standalone:
+  # -- Number of replicas for the standalone deployment
+  replicaCount: 1
+  # -- Resource requests and limits for standalone pods
+  resources: {}
+  #   requests:
+  #     cpu: 100m
+  #     memory: 256Mi
+  #   limits:
+  #     cpu: "1"
+  #     memory: 512Mi
+
+# ============================================================================
+# Scaled mode settings (mode: scaled)
+# ============================================================================
+
+scaled:
+  control:
+    # -- Number of replicas for the control plane
+    replicaCount: 1
+    # -- Resource requests and limits for control plane pods
+    resources: {}
+    #   requests:
+    #     cpu: 200m
+    #     memory: 512Mi
+    #   limits:
+    #     cpu: "1"
+    #     memory: 1Gi
+
+  worker:
+    # -- Number of replicas for worker pods (when autoscaling is disabled)
+    replicaCount: 2
+    # -- Resource requests and limits for worker pods
+    resources: {}
+    #   requests:
+    #     cpu: 250m
+    #     memory: 512Mi
+    #   limits:
+    #     cpu: "2"
+    #     memory: 1Gi
+
+    autoscaling:
+      # -- Enable Horizontal Pod Autoscaler for workers
+      enabled: true
+      # -- Minimum number of worker replicas
+      minReplicas: 2
+      # -- Maximum number of worker replicas
+      maxReplicas: 10
+      # -- Target CPU utilization percentage for autoscaling
+      targetCPUUtilization: 70
+      # -- Target memory utilization percentage (optional, leave empty to disable)
+      targetMemoryUtilization: ""
+
+# ============================================================================
+# Application configuration (non-secret)
+# ============================================================================
+
+config:
+  # -- Node environment (production recommended for deployments)
+  nodeEnv: production
+  # -- Application log level: debug, info, warn, error
+  logLevel: info
+  # -- Comma-separated allowed CORS origins
+  corsOrigins: "*"
+  # -- Disable all outbound internet calls when true
+  offline: false
+
+# ============================================================================
+# Secrets
+# ============================================================================
+# When secrets.existingSecret is set, all other secret values are ignored and
+# the named Kubernetes Secret is used instead. The Secret must contain keys:
+#   MONGO_URI, JWT_SECRET, ENCRYPTION_KEY
+# and optionally: ADMIN_SECRET
+# ============================================================================
+
+secrets:
+  # -- JWT signing secret. Auto-generated (64 hex chars) if left empty.
+  jwtSecret: ""
+  # -- AES-256-GCM encryption key (must be exactly 32 characters).
+  #    Auto-generated if left empty.
+  encryptionKey: ""
+  # -- Optional admin bootstrap secret
+  adminSecret: ""
+  # -- Use an existing Kubernetes Secret instead of creating one
+  existingSecret: ""
+
+# ============================================================================
+# MongoDB (bundled subchart — bitnami/mongodb)
+# ============================================================================
+
+mongodb:
+  # -- Deploy the bundled MongoDB subchart
+  enabled: true
+  auth:
+    # -- Enable MongoDB authentication
+    enabled: false
+  persistence:
+    # -- Persistent volume size for MongoDB data
+    size: 8Gi
+
+# ============================================================================
+# External MongoDB (used when mongodb.enabled is false)
+# ============================================================================
+
+externalMongodb:
+  # -- Full MongoDB connection URI
+  # Example: mongodb+srv://user:pass@cluster.example.com/modelprism?retryWrites=true
+  uri: ""
+
+# ============================================================================
+# Ingress
+# ============================================================================
+
+ingress:
+  # -- Enable ingress resource creation
+  enabled: false
+  # -- Ingress class name (e.g. nginx, traefik)
+  className: ""
+  # -- Additional ingress annotations
+  annotations: {}
+  #   cert-manager.io/cluster-issuer: letsencrypt-prod
+  # -- Ingress host rules
+  hosts:
+    - host: model-prism.local
+      paths:
+        - path: /
+          pathType: Prefix
+  # -- TLS configuration
+  tls: []
+  #   - secretName: model-prism-tls
+  #     hosts:
+  #       - model-prism.local
+
+# ============================================================================
+# Service
+# ============================================================================
+
+service:
+  # -- Kubernetes Service type
+  type: ClusterIP
+  # -- Service port
+  port: 80
+
+# ============================================================================
+# Default resource requests and limits
+# Applied when mode-specific resources are not set.
+# ============================================================================
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: "1"
+    memory: 512Mi
+
+# ============================================================================
+# Pod scheduling
+# ============================================================================
+
+# -- Node selector labels
+nodeSelector: {}
+
+# -- Tolerations for pod scheduling
+tolerations: []
+
+# -- Affinity rules for pod scheduling
+affinity: {}
+
+# -- Additional pod annotations
+podAnnotations: {}
+
+# -- Pod-level security context
+podSecurityContext: {}
+#   fsGroup: 1000
+
+# -- Container-level security context
+securityContext: {}
+#   runAsNonRoot: true
+#   runAsUser: 1000
+#   readOnlyRootFilesystem: true
+
+# ============================================================================
+# Service Account
+# ============================================================================
+
+serviceAccount:
+  # -- Create a dedicated ServiceAccount
+  create: true
+  # -- ServiceAccount name (generated from release name if empty)
+  name: ""
+  # -- Additional ServiceAccount annotations (e.g. for IAM roles)
+  annotations: {}
+

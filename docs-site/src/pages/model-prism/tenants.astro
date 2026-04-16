@@ -1,0 +1,258 @@
+---
+import DocsPage from '../../layouts/DocsPage.astro';
+---
+
+<DocsPage title="Tenants — Model Prism" description="Tenant configuration, API key lifecycle, model access control, aliases, routing config, and self-service portal in Open Model Prism.">
+
+  <h1 class="text-3xl font-bold text-white mb-6">Tenant Management</h1>
+  <p class="text-white/55 leading-relaxed mb-4">A <strong class="text-white/80">tenant</strong> represents an isolated gateway endpoint. Each team, project, or application gets its own tenant with a unique URL, API key, and configuration.</p>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Tenant Configuration</h2>
+  <div class="overflow-x-auto mb-6">
+    <table class="w-full border-collapse">
+      <thead>
+        <tr>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Field</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">name</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Display name</td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">slug</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">URL segment — determines the gateway endpoint: <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">/api/&lt;slug&gt;/v1</code></td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">providerIds</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Assigned providers (models from these providers are accessible)</td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">routing</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Auto-routing config: classifier provider, model, overrides</td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">modelConfig</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Model access control: mode + list</td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">modelAliases</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Map of alias &rarr; real model ID</td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">rateLimit</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Requests and tokens per minute (0 = unlimited)</td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">keyEnabled</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Whether the API key accepts requests</td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">keyLifetimeDays</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">7 / 14 / 30 / 60 / 90 / 365 / 0 (unlimited)</td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">keyExpiresAt</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Computed expiry timestamp</td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">forceAutoRoute</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Override all model requests to use auto-routing</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">API Key Lifecycle</h2>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-2">Generation</h3>
+  <p class="text-white/55 leading-relaxed mb-4">API keys are generated as <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">omp-&lt;64 hex chars&gt;</code>. The key is shown <strong class="text-white/80">once</strong> at creation time. The stored value is <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">SHA-256(key)</code> — the plaintext is never persisted.</p>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-2">Rotation</h3>
+  <p class="text-white/55 leading-relaxed mb-4">Clicking <strong class="text-white/80">Rotate Key</strong> on a tenant immediately invalidates the old key and generates a new one. The new key is shown once and must be copied before closing the modal.</p>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-2">Custom Keys</h3>
+  <p class="text-white/55 leading-relaxed mb-4">Opt-in: enter a custom key (minimum 16 characters). The custom key is stored encrypted (AES-256-GCM) and validated at request time the same way as generated keys.</p>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-2">Lifetime &amp; Expiry</h3>
+  <p class="text-white/55 leading-relaxed mb-4">Keys can be configured with an expiry period. On creation or rotation, <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">keyExpiresAt = now + keyLifetimeDays x 86400s</code>. At the gateway, every request checks:</p>
+  <pre class="bg-[#0d0d14] border border-white/10 rounded-lg p-4 overflow-x-auto text-sm text-white/70 mb-6 font-mono"><code>keyEnabled === false  ->  401  &#123; error: "api_key_disabled" &#125;
+keyExpiresAt &lt; now   ->  401  &#123; error: "api_key_expired" &#125;</code></pre>
+  <p class="text-white/55 leading-relaxed mb-4">Keys with no expiry (<code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">keyLifetimeDays = 0</code>) never expire.</p>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-2">Enable / Disable</h3>
+  <p class="text-white/55 leading-relaxed mb-4">A key can be disabled without deleting it. The UI shows a warning modal before disabling — any active clients using the key will immediately start receiving 401 errors.</p>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Generate Config</h2>
+  <p class="text-white/55 leading-relaxed mb-4">The <strong class="text-white/80">Generate Config</strong> modal provides ready-to-paste configuration snippets for connecting popular tools and SDKs to a tenant's gateway endpoint.</p>
+  <ul class="list-disc ml-6 text-white/55 space-y-2 mb-4">
+    <li>Model checkboxes let you select which models to include in the generated config — <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">model-prism</code> (auto-routing) is always included and cannot be unchecked</li>
+    <li><strong class="text-white/80">Default model selector</strong> — choose which model is set as the default in the generated configuration</li>
+    <li>Supported formats: <strong class="text-white/80">Continue</strong>, <strong class="text-white/80">OpenCode</strong>, <strong class="text-white/80">Cursor</strong>, <strong class="text-white/80">Python SDK</strong>, <strong class="text-white/80">Node.js SDK</strong></li>
+    <li>Available on both the admin <strong class="text-white/80">Tenants</strong> page and the tenant-admin <strong class="text-white/80">My Tenant</strong> self-service page</li>
+  </ul>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Custom API Key Minimum</h2>
+  <p class="text-white/55 leading-relaxed mb-4">Custom API keys now have a minimum length of <strong class="text-white/80">1 character</strong> (previously 6). This allows short keys like <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">test</code>, <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">dev</code>, etc. for development and testing environments.</p>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Multi-API-Key Support</h2>
+  <p class="text-white/55 leading-relaxed mb-4">In addition to the primary API key, tenants can have <strong class="text-white/80">multiple API keys</strong>. Each additional key has its own label, enabled/disabled state, optional expiry, and <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">lastUsedAt</code> tracking.</p>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-2">Admin Endpoints</h3>
+  <div class="overflow-x-auto mb-6">
+    <table class="w-full border-collapse">
+      <thead>
+        <tr>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Method</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Endpoint</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">GET</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">/:id/keys</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">List all API keys for a tenant</td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">POST</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">/:id/keys</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Generate a new API key</td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">POST</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">/:id/keys/custom</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Create a key with a custom value</td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">PATCH</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">/:id/keys/:keyId</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Update key label, enabled state, or expiry</td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">DELETE</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">/:id/keys/:keyId</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Revoke and delete a key</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-2">UI</h3>
+  <p class="text-white/55 leading-relaxed mb-4">The Tenants page includes a <strong class="text-white/80">"Manage API keys"</strong> drawer where admins can view, create, enable/disable, and revoke additional keys per tenant.</p>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-2">Gateway Authentication</h3>
+  <p class="text-white/55 leading-relaxed mb-4">The gateway authenticates incoming requests against both the legacy single-key field and the multi-key array. A request is authorized if the provided key matches <strong class="text-white/80">any</strong> enabled, non-expired key on the tenant.</p>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Rate Limits & Quotas</h2>
+  <p class="text-white/55 leading-relaxed mb-4">Rate limits, usage quotas, budget limits, and budget guard can be configured per tenant via the admin UI in the "Limits & Quotas" tab.</p>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-2">Rate Limits</h3>
+  <p class="text-white/55 leading-relaxed mb-4">Per-tenant rate limiting uses a sliding-window counter (in-memory, per pod). Two limits are configurable:</p>
+  <ul class="list-disc ml-6 text-white/55 space-y-1 mb-4">
+    <li><strong class="text-white/80">Requests per minute</strong> — 0 = unlimited (default)</li>
+    <li><strong class="text-white/80">Tokens per minute</strong> — 0 = unlimited (default)</li>
+  </ul>
+  <p class="text-white/55 leading-relaxed mb-4">When a limit is exceeded, the gateway returns a <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">429</code> error with type <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">rate_limit_error</code>.</p>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-2">Usage Quotas</h3>
+  <p class="text-white/55 leading-relaxed mb-4">Tenants can be assigned <strong class="text-white/80">token, request, and cost quotas</strong> to control usage within a billing period. Quotas can be managed directly in the admin UI via the "Limits & Quotas" tab on each tenant.</p>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-2">Enforcement Modes</h3>
+  <div class="overflow-x-auto mb-6">
+    <table class="w-full border-collapse">
+      <thead>
+        <tr>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Mode</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Behavior</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">hard_block</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Requests are rejected with a 429 error once the quota is exceeded</td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">soft_warning</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Requests continue but a warning header is added and a webhook is fired</td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">auto_economy</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Routing cost mode is automatically downgraded to economy when quota is near exhaustion</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-2">Period Reset</h3>
+  <p class="text-white/55 leading-relaxed mb-4">Quotas support automatic calendar-based period resets (daily or monthly). Usage counters are reset at the start of each period.</p>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-2">Admin API</h3>
+  <p class="text-white/55 leading-relaxed mb-4">Quota configuration and usage data are managed via <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">/api/prism/admin/quotas/</code>.</p>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Strip Thinking</h2>
+  <p class="text-white/55 leading-relaxed mb-4">Each tenant has a <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">stripThinking</code> setting (default: <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">true</code>) that filters extended thinking and reasoning content from Claude and other models before returning responses to the client.</p>
+  <p class="text-white/55 leading-relaxed mb-4">The filter handles multiple thinking formats:</p>
+  <ul class="list-disc ml-6 text-white/55 space-y-1 mb-4">
+    <li><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">reasoning_content</code> fields in the response</li>
+    <li>Messages with <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">role: "thinking"</code></li>
+    <li><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">&lt;thinking&gt;</code> XML tags in content</li>
+    <li>Content blocks with <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">type: "thinking"</code></li>
+  </ul>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Model Access Control</h2>
+  <p class="text-white/55 leading-relaxed mb-4">Each tenant can restrict which models are accessible via the gateway using three modes:</p>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-2"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">all</code> (default)</h3>
+  <p class="text-white/55 leading-relaxed mb-4">All models from assigned providers are available. No filtering applied.</p>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-2"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">whitelist</code></h3>
+  <p class="text-white/55 leading-relaxed mb-4">Only models explicitly listed are accessible. Requests to any other model return an error.</p>
+  <pre class="bg-[#0d0d14] border border-white/10 rounded-lg p-4 overflow-x-auto text-sm text-white/70 mb-6 font-mono"><code>list: ["gpt-4o", "gpt-4o-mini", "claude-sonnet-4-6"]
+-> Only these 3 models work for this tenant</code></pre>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-2"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">blacklist</code></h3>
+  <p class="text-white/55 leading-relaxed mb-4">All models are accessible <strong class="text-white/80">except</strong> those explicitly listed.</p>
+  <pre class="bg-[#0d0d14] border border-white/10 rounded-lg p-4 overflow-x-auto text-sm text-white/70 mb-6 font-mono"><code>list: ["claude-opus-4-6", "o3"]
+-> These expensive models are blocked; everything else works</code></pre>
+  <p class="text-white/55 leading-relaxed mb-4">The model access config can be set by:</p>
+  <ul class="list-disc ml-6 text-white/55 space-y-1 mb-4">
+    <li><strong class="text-white/80">Admin / maintainer</strong>: via the Tenants page &rarr; Models tab</li>
+    <li><strong class="text-white/80">tenant-admin</strong>: via the My Tenant page &rarr; Model Access tab (self-service)</li>
+  </ul>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Multi-Provider Tenants</h2>
+  <p class="text-white/55 leading-relaxed mb-4">A single tenant can connect to multiple providers (e.g. AWS Bedrock + Azure OpenAI + Ollama). When multiple providers offer the same model ID, the <strong class="text-white/80">first provider in the tenant's provider list</strong> is used by default.</p>
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-2">Duplicate Model Detection</h3>
+  <p class="text-white/55 leading-relaxed mb-4">When adding providers to a tenant, Model Prism automatically detects overlapping model IDs and shows a warning. For example, if both "AWS Account EU" and "AWS Account US" have <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">eu.anthropic.claude-opus-4-6-v1</code>, the admin is notified.</p>
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-2">Explicit Provider Selection</h3>
+  <p class="text-white/55 leading-relaxed mb-4">To target a specific provider, prefix the model ID with the provider's slug:</p>
+  <pre class="bg-[#0d0d14] border border-white/10 rounded-lg p-4 overflow-x-auto text-sm text-white/70 mb-6 font-mono"><code>POST /api/my-tenant/v1/chat/completions
+&#123;
+  "model": "aws-eu/eu.anthropic.claude-opus-4-6-v1"
+&#125;
+// Without prefix → first provider with this model wins
+// With prefix → routes to the provider with slug "aws-eu"</code></pre>
+  <p class="text-white/55 leading-relaxed mb-4">Provider slugs are auto-prefixed: <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">aws-</code> for Bedrock, <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">az-</code> for Azure.</p>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Model Aliases</h2>
+  <p class="text-white/55 leading-relaxed mb-4">Tenants can define aliases that map client-facing model names to actual provider model IDs:</p>
+  <pre class="bg-[#0d0d14] border border-white/10 rounded-lg p-4 overflow-x-auto text-sm text-white/70 mb-6 font-mono"><code>&#123;
+  "gpt-4": "gpt-4o",
+  "fast":  "gpt-4o-mini",
+  "smart": "claude-opus-4-6"
+&#125;</code></pre>
+  <p class="text-white/55 leading-relaxed mb-4">Clients using the tenant endpoint can reference <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">model: "smart"</code> and the request is transparently forwarded to <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">claude-opus-4-6</code>.</p>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Routing Configuration</h2>
+  <p class="text-white/55 leading-relaxed mb-4">Each tenant has its own routing configuration:</p>
+  <pre class="bg-[#0d0d14] border border-white/10 rounded-lg p-4 overflow-x-auto text-sm text-white/70 mb-6 font-mono"><code>&#123;
+  "classifierProvider": "&lt;provider-id&gt;",
+  "classifierModel":    "gpt-4o-mini",
+  "defaultModel":       "gpt-4o",
+  "forceAutoRoute":     false,
+  "overrides": &#123;
+    "visionUpgrade":          true,
+    "confidenceFallback":     true,
+    "confidenceThreshold":    0.65,
+    "domainGate":             true,
+    "conversationTurnUpgrade": true,
+    "frustrationUpgrade":     true,
+    "outputLengthUpgrade":    true
+  &#125;
+&#125;</code></pre>
+  <p class="text-white/55 leading-relaxed mb-4">See <a href="/model-prism/routing" class="text-[#38bdf8] hover:text-[#7dd3fc]">Routing</a> for full details on how routing works.</p>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Tenant-Admin Self-Service</h2>
+  <p class="text-white/55 leading-relaxed mb-4">Users with the <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">tenant-admin</code> role can manage their assigned tenants without admin access:</p>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-2">My Tenant page</h3>
+  <ul class="list-disc ml-6 text-white/55 space-y-1 mb-4">
+    <li><strong class="text-white/80">Model Access tab</strong> — switch between all/whitelist/blacklist, select models via checkboxes grouped by provider</li>
+    <li><strong class="text-white/80">Generate Config tab</strong> — generate ready-to-paste configs for Continue, OpenCode, Cursor, Claude Code, Open WebUI, Python SDK, Node.js SDK</li>
+  </ul>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-2">Tenant Portal API</h3>
+  <div class="overflow-x-auto mb-6">
+    <table class="w-full border-collapse">
+      <thead>
+        <tr>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Method</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Endpoint</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">GET</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">/api/prism/tenant-portal/mine</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">List own tenants</td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">GET</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">/api/prism/tenant-portal/:id</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Get tenant config (no API key hash)</td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">PUT</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">/api/prism/tenant-portal/:id/model-config</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Update model access mode and list</td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">GET</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">/api/prism/tenant-portal/:id/models</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">List accessible models (respects model access config)</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="text-white/55 leading-relaxed mb-4">Admins and maintainers also have access to these endpoints and see all tenants via <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">/mine</code>.</p>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Generate Config</h2>
+  <p class="text-white/55 leading-relaxed mb-4">The <strong class="text-white/80">Generate Config</strong> button (code icon) per tenant opens a modal with configuration snippets for popular tools. The endpoint URL and API key placeholder are pre-filled; the user just needs to substitute their actual key.</p>
+  <div class="overflow-x-auto mb-6">
+    <table class="w-full border-collapse">
+      <thead>
+        <tr>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Tool</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Config format</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Location</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Continue</td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">YAML schema v1</td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">~/.continue/config.yaml</code></td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">OpenCode</td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">JSON with <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">$schema</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">~/.config/opencode/config.json</code></td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Cursor</td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Manual settings</td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Settings &rarr; Models &rarr; OpenAI</td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Claude Code</td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Shell env var</td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">~/.bashrc</code> / <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">.env</code></td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Open WebUI</td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Docker env</td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">docker-compose.yml</code></td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Python SDK</td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Code snippet</td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">example.py</code></td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Node.js SDK</td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Code snippet</td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">example.mjs</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+</DocsPage>

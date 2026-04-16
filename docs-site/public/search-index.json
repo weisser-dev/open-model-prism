@@ -1,0 +1,1364 @@
+[
+  {
+    "title": "Documentation",
+    "href": "/#documentation",
+    "text": "Technical documentation for github.com/weisser-dev/open-model-prism products. Guides, architecture references, and API documentation.",
+    "page": "Documentation"
+  },
+  {
+    "title": "Model Prism",
+    "href": "/#model-prism",
+    "text": "v1.6.6 Multi-tenant OpenAI-compatible LLM gateway with intelligent routing, cost tracking, and self-optimizing model selection. Connect multiple LLM providers, route requests to the optimal model, track costs per team, and let the built-in Benchmark Agent continuously fine-tune routing quality. Getting Started | Architecture | API Reference | +6 more",
+    "page": "Documentation"
+  },
+  {
+    "title": "Analytics & Cost Tracking",
+    "href": "/model-prism/analytics#analytics-cost-tracking",
+    "text": "Open Model Prism tracks every gateway request and aggregates statistics at multiple levels: per-tenant, per-model, per-user, and per-day. All analytics are written asynchronously (fire-and-forget) so they never add latency to the gateway response.",
+    "page": "Analytics & Cost Tracking"
+  },
+  {
+    "title": "Metrics Tracked Per Request",
+    "href": "/model-prism/analytics#metrics-tracked-per-request",
+    "text": "Field Description {[ ['tenantId', 'Which tenant made the request'], ['userId', 'User identifier (from API key or explicit header)'], ['model', 'Actual model used (after routing resolution)'], ['requestedModel', 'Model requested by client (may be \"auto\" or an alias)'], ['category', 'Auto-routing category (if auto-routed)'], ['inputTokens', 'Prompt + context tokens'], ['outputTokens', 'Generated tokens'], ['inputCost', 'Input token cost (USD)'], ['outputCost', 'Output token cost (USD)'], ['actualC",
+    "page": "Analytics & Cost Tracking"
+  },
+  {
+    "title": "Cost Calculation",
+    "href": "/model-prism/analytics#cost-calculation",
+    "text": "Costs are calculated using a three-level pricing lookup: 1. Tenant pricing override (set per-model on the tenant) ↓ not found 2. pricingDefaults.js (flat table with fuzzy model name matching) ↓ not found 3. modelRegistry.js (inputPer1M / outputPer1M fields) ↓ not found 4. $0.00 (unknown model — no cost tracked) The baseline cost is calculated at the list price of the originally requested model (before routing). This allows the dashboard to show how much was saved by routing to a cheaper model. E",
+    "page": "Analytics & Cost Tracking"
+  },
+  {
+    "title": "Daily Aggregates",
+    "href": "/model-prism/analytics#daily-aggregates",
+    "text": "For dashboard performance, per-day aggregates are maintained in DailyStat . Updates are written with $inc operators — no read-modify-write cycles. DailyStat { tenantId, date: \"2026-04-01\", requests: 1 240, autoRoutedCount: 980, inputTokens: 4 820 000, outputTokens: 920 000, actualCost: 18.42, baselineCost: 74.80, saved: 56.38, }",
+    "page": "Analytics & Cost Tracking"
+  },
+  {
+    "title": "Dashboard",
+    "href": "/model-prism/analytics#dashboard",
+    "text": "The dashboard provides an overview across all tenants (admin/maintainer) or scoped to assigned tenants (tenant-viewer/tenant-admin).",
+    "page": "Analytics & Cost Tracking"
+  },
+  {
+    "title": "Time Range Filter v1.8.9",
+    "href": "/model-prism/analytics#time-range-filter-v189",
+    "text": "All dashboard KPIs, charts, model usage, and category distribution adapt to the selected time range. Six presets are available: 6h, 12h, 24h (hourly granularity, aggregated from RequestLog ) and 7d, 30d, 90d (daily granularity, aggregated from DailyStat ). The chart X-axis automatically adjusts: 14:00 for hourly, 04-08 for daily.",
+    "page": "Analytics & Cost Tracking"
+  },
+  {
+    "title": "KPI Cards",
+    "href": "/model-prism/analytics#kpi-cards",
+    "text": "Card Value Subtitle {[ ['Total Cost', 'Sum of actual cost', 'Last N days'], ['Savings vs Baseline', 'Sum of saved', 'Percentage of baseline'], ['Requests', 'Total request count', '% auto-routed (count)'], ['Input Tokens', 'Sum of input tokens', 'Prompt / context tokens'], ['Output Tokens', 'Sum of output tokens', 'Generated tokens'], ['Classifier Cost', 'Sum of routing/classifier cost', 'Count of classified requests'], ].map(([card, val, sub]) => ( {card} {val} {sub} ))}",
+    "page": "Analytics & Cost Tracking"
+  },
+  {
+    "title": "Charts",
+    "href": "/model-prism/analytics#charts",
+    "text": "Cost Over Time — Area chart with two series: Actual Cost (filled blue) and Baseline Cost (filled grey) Token Usage Over Time — Stacked bar chart: Input Tokens (orange) and Output Tokens (yellow) Model Usage — Bar chart: requests per model over the selected period",
+    "page": "Analytics & Cost Tracking"
+  },
+  {
+    "title": "Filters",
+    "href": "/model-prism/analytics#filters",
+    "text": "Tenant selector — filter dashboard to a single tenant (all tenants by default) Time range — Last 7 / 30 / 90 days",
+    "page": "Analytics & Cost Tracking"
+  },
+  {
+    "title": "Request Log",
+    "href": "/model-prism/analytics#request-log",
+    "text": "The request log shows individual requests with full details. Available to admin , maintainer , and finops roles. Filters: Tenant, Model, Status (all/success/error), Auto-routed, Category v1.6.14 , Time presets v1.6.14 . Special indicators: context_fallback badge (orange, shows original→fallback model), auto_routed badge (shows category and confidence), error badge (red, with truncated error on hover).",
+    "page": "Analytics & Cost Tracking"
+  },
+  {
+    "title": "Time & Category Filters v1.6.14",
+    "href": "/model-prism/analytics#time-category-filters-v1614",
+    "text": "The request log now includes time preset buttons (1h, 6h, 24h, 7d) with a custom date range picker, and a category filter dropdown for filtering by routing category (e.g. coding_autocomplete ). Both filters are server-side with indexed queries.",
+    "page": "Analytics & Cost Tracking"
+  },
+  {
+    "title": "Expanded Row Details v1.6.14",
+    "href": "/model-prism/analytics#expanded-row-details-v1614",
+    "text": "Clicking a row to expand it now shows additional context beyond prompt snapshots: Routing Debug Panel v1.8.0 — for auto-routed requests, shows the full routing decision chain: extracted signals (tokens, images, tool calls, FIM, domains, languages), pre-routing status with signal source, classifier confidence bar, all applied overrides as badges, and final model/tier with routing time and classifier cost Error display — failed requests show the error type and message inline, even without prompt l",
+    "page": "Analytics & Cost Tracking"
+  },
+  {
+    "title": "Override Filter v1.6.18",
+    "href": "/model-prism/analytics#override-filter-v1618",
+    "text": "A dropdown filter for overrideApplied values lets you isolate requests affected by specific routing overrides: frustration_upgrade , classifier_fallback , session_context_upgrade , etc. Uses regex matching so multi-override strings are included. Expanded rows now also display the model's response content when prompt logging is enabled. A \"Hide autocomplete\" toggle in the filter bar excludes all coding_autocomplete and tool_use requests so they don't clutter the view when analysing agent or user ",
+    "page": "Analytics & Cost Tracking"
+  },
+  {
+    "title": "Retroactive FIM Reclassification v1.6.15",
+    "href": "/model-prism/analytics#retroactive-fim-reclassification-v1615",
+    "text": "The \"Reclassify FIM\" button (admin only) scans unclassified requests from the last 30 days that have stored prompt snapshots and backfills category , isFimRequest , and isToolAgentRequest using current detection logic. API: POST /api/prism/admin/dashboard/reclassify-fim .",
+    "page": "Analytics & Cost Tracking"
+  },
+  {
+    "title": "Session Column v1.6.7+",
+    "href": "/model-prism/analytics#session-column-v167",
+    "text": "The request log includes a Session column displaying clickable session ID badges. Clicking a session ID filters the log to show all requests belonging to that session. A \"Group by session\" toggle adds colored left borders for visual grouping of related requests. The backend supports ?sessionId= filtering. Since v1.6.14 , session grouping also uses the systemPromptHash field. Requests from the same agent or tool (e.g. Claude Code, Continue, Cursor) that share an identical system prompt are groupe",
+    "page": "Analytics & Cost Tracking"
+  },
+  {
+    "title": "Gateway Error Logging v1.6.7+",
+    "href": "/model-prism/analytics#gateway-error-logging-v167",
+    "text": "All gateway errors are now logged to RequestLog , including: Authentication failures (invalid key, expired key, disabled key) Rate limit rejections Budget limit blocks Access denied (model not allowed) Provider not found Budget guard blocks Upstream / provider errors Stream errors Each error is stored with status=error , the HTTP status code, an errorType field, and the error message. New indexed errorType values: context_length_exceeded , max_tokens_exceeded , provider_error .",
+    "page": "Analytics & Cost Tracking"
+  },
+  {
+    "title": "Token Estimation",
+    "href": "/model-prism/analytics#token-estimation",
+    "text": "For requests where the provider does not return token counts (e.g. streaming), tokens are estimated offline: estimatedTokens ≈ totalChars / 3.5 Adjustments: code blocks counted at 1 char/token; ~4 tokens overhead per message. The token service also performs a pre-flight check — if estimated tokens exceed the model's context window, the request is automatically upgraded to a larger-context model. Since v1.6.14 , streaming requests send include_usage: true so providers return a usage chunk with ac",
+    "page": "Analytics & Cost Tracking"
+  },
+  {
+    "title": "Benchmarks & AI Evaluation v1.6.6",
+    "href": "/model-prism/analytics#benchmarks-ai-evaluation-v166",
+    "text": "The Benchmarks API at /api/prism/admin/benchmarks/ exposes request logs in a structured format designed for AI-driven quality evaluation.",
+    "page": "Analytics & Cost Tracking"
+  },
+  {
+    "title": "Session Tracking",
+    "href": "/model-prism/analytics#session-tracking",
+    "text": "Clients send an x-session-id header to group related requests. Sessions enable analysis of conversational coherence — whether the router maintains consistent model selection within a conversation or bounces between models.",
+    "page": "Analytics & Cost Tracking"
+  },
+  {
+    "title": "Activity Dump",
+    "href": "/model-prism/analytics#activity-dump",
+    "text": "Each activity entry contains the complete decision context: what was requested, how the router decided, which model was chosen and why, what the model produced, and what it cost. This enables a Benchmark Agent to evaluate routing accuracy, detect over/under-routing patterns, and recommend parameter changes.",
+    "page": "Analytics & Cost Tracking"
+  },
+  {
+    "title": "Benchmark Agent",
+    "href": "/model-prism/analytics#benchmark-agent",
+    "text": "Model Prism ships with a benchmark-agent.md playbook that describes an autonomous evaluation cycle: collect recent logs, analyze routing quality, dry-run proposed changes via the routing benchmark endpoint, apply incrementally, and re-evaluate. The agent can tune token thresholds, keyword rules, signal weights, category tier assignments, cost modes, and model priorities.",
+    "page": "Analytics & Cost Tracking"
+  },
+  {
+    "title": "Built-in WebChat v1.8.2",
+    "href": "/model-prism/analytics#built-in-webchat-v182",
+    "text": "Model Prism includes a lightweight chat interface accessible from the admin UI sidebar. It supports SSE streaming (no WebSockets required), making it compatible with environments that block WebSocket connections.",
+    "page": "Analytics & Cost Tracking"
+  },
+  {
+    "title": "Features",
+    "href": "/model-prism/analytics#features",
+    "text": "Model selection — dropdown with all available models, default auto (Model Prism routing) Markdown rendering — full Markdown support with syntax-highlighted code blocks and copy-to-clipboard buttons Response metadata — every assistant response shows the routed model, category, tier, token count, and cost as small badges SSE streaming — real-time token-by-token output via Server-Sent Events, no WebSocket dependency",
+    "page": "Analytics & Cost Tracking"
+  },
+  {
+    "title": "Visibility Modes",
+    "href": "/model-prism/analytics#visibility-modes",
+    "text": "Chat visibility is configurable in System → Chat Settings : Admin only (default) — requires login to the admin UI Public — accessible at /public-chat without login, rate-limited per IP Token-based — requires a one-time access token generated by an admin. Tokens have configurable expiry and can be revoked Admins can also configure: allowed models whitelist, default model, system prompt injection, rate limits (requests/min, max tokens/request), and access token management.",
+    "page": "Analytics & Cost Tracking"
+  },
+  {
+    "title": "Webhooks & Event Notifications v1.6.9+",
+    "href": "/model-prism/analytics#webhooks-event-notifications-v169",
+    "text": "Model Prism supports per-tenant and global webhooks for real-time event notifications. All webhook payloads are signed with HMAC-SHA256 for verification.",
+    "page": "Analytics & Cost Tracking"
+  },
+  {
+    "title": "Delivery",
+    "href": "/model-prism/analytics#delivery",
+    "text": "Failed deliveries are retried with exponential backoff . Delivery attempts are logged and retained for 30 days (TTL).",
+    "page": "Analytics & Cost Tracking"
+  },
+  {
+    "title": "Event Types",
+    "href": "/model-prism/analytics#event-types",
+    "text": "Event Description budget_threshold Tenant spend has reached the configured warning threshold budget_exceeded Tenant spend has exceeded the budget limit error_spike Error rate has spiked above the configured threshold provider_down A provider circuit breaker has opened quota_exhausted Tenant quota has been fully consumed quota_warning Tenant quota usage is approaching the limit experiment_completed An A/B testing experiment has reached statistical significance",
+    "page": "Analytics & Cost Tracking"
+  },
+  {
+    "title": "Admin API",
+    "href": "/model-prism/analytics#admin-api",
+    "text": "Webhooks are managed via /api/prism/admin/webhooks/ .",
+    "page": "Analytics & Cost Tracking"
+  },
+  {
+    "title": "Provider Error Tracking v1.6.9+",
+    "href": "/model-prism/analytics#provider-error-tracking-v169",
+    "text": "All provider errors (400-level, 502s, timeouts) are logged to the RequestLog with a structured errorType field for filtering and analysis.",
+    "page": "Analytics & Cost Tracking"
+  },
+  {
+    "title": "Error Types",
+    "href": "/model-prism/analytics#error-types",
+    "text": "errorType Description context_length_exceeded Input exceeded the model's context window max_tokens_exceeded Requested max_tokens exceeds the model's output limit provider_error Generic provider-side error (502, timeout, rate limit)",
+    "page": "Analytics & Cost Tracking"
+  },
+  {
+    "title": "Automatic max_tokens Retry",
+    "href": "/model-prism/analytics#automatic-maxtokens-retry",
+    "text": "When a max_tokens_exceeded error is detected, the gateway extracts the provider's reported limit from the error message, clamps the request to that limit, and automatically retries.",
+    "page": "Analytics & Cost Tracking"
+  },
+  {
+    "title": "Streaming Retry with Fallback v1.6.12+",
+    "href": "/model-prism/analytics#streaming-retry-with-fallback-v1612",
+    "text": "Streaming requests now have the same retry logic as non-streaming requests. The gateway transparently switches to the next provider without the client needing to reconnect. Provider fallback chain — tries the next provider in priority order on failure max_tokens auto-clamp — automatically clamps to the provider's reported limit on max_tokens_exceeded Context overflow model upgrade — upgrades to a larger-context model when the input exceeds the current model's window Circuit breaker integration —",
+    "page": "Analytics & Cost Tracking"
+  },
+  {
+    "title": "Prometheus Metrics",
+    "href": "/model-prism/analytics#prometheus-metrics",
+    "text": "Available at /metrics (unauthenticated — firewall in production): http_requests_total — by method, path, status http_request_duration_seconds — histogram omp_gateway_requests_total — by tenant, model, status omp_gateway_tokens_total — input/output by tenant omp_gateway_cost_total — actual cost by tenant Node.js default metrics (event loop lag, heap, GC)",
+    "page": "Analytics & Cost Tracking"
+  },
+  {
+    "title": "Gateway API",
+    "href": "/model-prism/api-reference#gateway-api",
+    "text": "The gateway exposes an OpenAI-compatible REST API. All authenticated endpoints require a tenant API key as a Bearer token. Base URL: https://your-host/api/<tenant-slug>/v1 Authentication: Authorization: Bearer omp-<your-api-key>",
+    "page": "API Reference"
+  },
+  {
+    "title": "POST /v1/chat/completions",
+    "href": "/model-prism/api-reference#post-v1chatcompletions",
+    "text": "Chat completions. Supports streaming and non-streaming. Set \"model\": \"auto\" to enable automatic routing. { \"model\": \"gpt-4o\", \"messages\": [ { \"role\": \"system\", \"content\": \"You are a helpful assistant.\" }, { \"role\": \"user\", \"content\": \"Hello!\" } ], \"temperature\": 0.7, \"stream\": false } Session Tracking v1.6.6 Send an x-session-id header to group related requests into a session. If omitted, a UUID is auto-generated. The session ID is returned in the response header x-session-id and in the JSON bod",
+    "page": "API Reference"
+  },
+  {
+    "title": "POST /v1/embeddings",
+    "href": "/model-prism/api-reference#post-v1embeddings",
+    "text": "{ \"model\": \"text-embedding-3-small\", \"input\": \"The quick brown fox\" }",
+    "page": "API Reference"
+  },
+  {
+    "title": "GET /v1/models",
+    "href": "/model-prism/api-reference#get-v1models",
+    "text": "List models available to this tenant (respects whitelist/blacklist config). Requires Bearer token.",
+    "page": "API Reference"
+  },
+  {
+    "title": "GET /v1/models/public",
+    "href": "/model-prism/api-reference#get-v1modelspublic",
+    "text": "Same as /v1/models but no authentication required. Useful for client setup tools probing available models before auth is configured.",
+    "page": "API Reference"
+  },
+  {
+    "title": "GET /v1/health",
+    "href": "/model-prism/api-reference#get-v1health",
+    "text": "Tenant health check. No authentication required. Returns { status, tenant, providers, timestamp } . HTTP 503 if degraded.",
+    "page": "API Reference"
+  },
+  {
+    "title": "Error Responses",
+    "href": "/model-prism/api-reference#error-responses",
+    "text": "All gateway errors follow the OpenAI error format: { \"error\": { \"message\": \"API key expired\", \"type\": \"authentication_error\", \"code\": \"key_expired\" } } HTTP Type Code Cause {[ ['401', 'authentication_error', 'missing_api_key', 'No Bearer token'], ['401', 'authentication_error', 'invalid_api_key', 'Key not found'], ['401', 'authentication_error', 'key_disabled', 'Key disabled'], ['401', 'authentication_error', 'key_expired', 'Key past expiry date'], ['429', 'rate_limit_error', 'rate_limit_exceede",
+    "page": "API Reference"
+  },
+  {
+    "title": "Admin API",
+    "href": "/model-prism/api-reference#admin-api",
+    "text": "All admin endpoints require a valid JWT Bearer token. Login via POST /api/prism/auth/login . Base URL: https://your-host/api/prism/admin",
+    "page": "API Reference"
+  },
+  {
+    "title": "Providers",
+    "href": "/model-prism/api-reference#providers",
+    "text": "Method Endpoint Description {[ ['GET', '/providers', 'List all providers'], ['POST', '/providers', 'Create provider'], ['PUT', '/providers/:id', 'Update provider'], ['DELETE', '/providers/:id', 'Delete provider'], ['POST', '/providers/:id/check', 'Test connection with detailed log'], ['POST', '/providers/:id/discover', 'Discover and save models'], ['GET', '/providers/models/all', 'Flat list of all models across providers'], ['PATCH', '/providers/:id/models/:modelId', 'Update model metadata'], ['",
+    "page": "API Reference"
+  },
+  {
+    "title": "Tenants Enterprise (create/delete)",
+    "href": "/model-prism/api-reference#tenants-enterprise-createdelete",
+    "text": "Creating and deleting tenants requires an Enterprise license. Listing and updating existing tenants (including budget limits) is available on all tiers. Method Endpoint Description {[ ['GET', '/tenants', 'List all tenants', false], ['POST', '/tenants', 'Create tenant', true], ['PUT', '/tenants/:id', 'Update tenant', false], ['DELETE', '/tenants/:id', 'Delete tenant', true], ['POST', '/tenants/:id/rotate-key', 'Rotate API key', false], ['PUT', '/tenants/:id/model-config', 'Update model access con",
+    "page": "API Reference"
+  },
+  {
+    "title": "Categories Enterprise",
+    "href": "/model-prism/api-reference#categories-enterprise",
+    "text": "Creating, modifying, and deleting routing categories requires an Enterprise license. Listing categories and built-in defaults is available on all tiers. Method Endpoint Description {[ ['GET', '/categories', 'List all routing categories', false], ['POST', '/categories', 'Create category', true], ['PUT', '/categories/:id', 'Update category', true], ['DELETE', '/categories/:id', 'Delete category', true], ['POST', '/categories/reset-defaults', 'Re-seed deleted built-in categories', false], ['GET', '",
+    "page": "API Reference"
+  },
+  {
+    "title": "Dashboard",
+    "href": "/model-prism/api-reference#dashboard",
+    "text": "Method Endpoint Description {[ ['GET', '/dashboard/summary', 'KPI summary (cost, tokens, requests, savings)'], ['GET', '/dashboard/daily', 'Daily time-series (cost + tokens per day)'], ['GET', '/dashboard/models', 'Model usage breakdown'], ['GET', '/dashboard/categories','Category usage breakdown'], ['GET', '/dashboard/users', 'Per-user usage breakdown'], ['GET', '/dashboard/requests', 'Paginated request log'], ['GET', '/dashboard/tenants-list', 'Lightweight tenant list for filter dropdowns'], [",
+    "page": "API Reference"
+  },
+  {
+    "title": "Benchmarks & Routing Evaluation v1.6.6",
+    "href": "/model-prism/api-reference#benchmarks-routing-evaluation-v166",
+    "text": "Endpoints for AI-driven routing quality analysis, session tracking, and model comparison. Designed to be consumed by an autonomous Benchmark Agent that fine-tunes routing parameters. Method Endpoint Description {[ ['GET', '/benchmarks/activity', 'Full activity dump — request, decision, response, cost per request'], ['GET', '/benchmarks/sessions', 'List sessions with aggregated stats (tokens, cost, models, errors)'], ['GET', '/benchmarks/sessions/:sessionId', 'All requests within one session in c",
+    "page": "API Reference"
+  },
+  {
+    "title": "Routing Rule Sets Enterprise",
+    "href": "/model-prism/api-reference#routing-rule-sets-enterprise",
+    "text": "Advanced routing rule sets and classifier configuration require an Enterprise license. Method Endpoint Description {[ ['GET', '/routing/rule-sets', 'List all routing rule sets'], ['POST', '/routing/rule-sets', 'Create rule set'], ['PUT', '/routing/rule-sets/:id', 'Update rule set (rules, classifier config)'], ['DELETE', '/routing/rule-sets/:id', 'Delete rule set'], ['POST', '/routing/rule-sets/:id/set-default', 'Set as global default rule set'], ['POST', '/routing/benchmark', 'Benchmark classifi",
+    "page": "API Reference"
+  },
+  {
+    "title": "Users",
+    "href": "/model-prism/api-reference#users",
+    "text": "Method Endpoint Role Description {[ ['GET', '/users', 'admin', 'List all users'], ['POST', '/users', 'admin', 'Create user'], ['PUT', '/users/:id', 'admin', 'Update user (role, tenants, password, active)'], ['DELETE', '/users/:id', 'admin', 'Delete user'], ].map(([method, path, role, desc]) => ( {method} {path} {role} {desc} ))}",
+    "page": "API Reference"
+  },
+  {
+    "title": "LDAP / Active Directory Enterprise",
+    "href": "/model-prism/api-reference#ldap-active-directory-enterprise",
+    "text": "LDAP/AD integration requires an Enterprise license. Returns 402 on non-Enterprise installations. Method Endpoint Role Description {[ ['GET', '/ldap', 'admin', 'Get LDAP configuration'], ['PUT', '/ldap', 'admin', 'Update LDAP configuration (URL, bind DN, group mappings)'], ['POST', '/ldap/test', 'admin', 'Test connection and verify group mapping'], ].map(([method, path, role, desc]) => ( {method} {path} {role} {desc} ))}",
+    "page": "API Reference"
+  },
+  {
+    "title": "Quotas v1.6.9+",
+    "href": "/model-prism/api-reference#quotas-v169",
+    "text": "Method Endpoint Description {[ ['GET', '/quotas/', 'List quotas (filter by tenantId, quotaType)'], ['GET', '/quotas/tenant/:id', 'Get tenant quotas with live status'], ['POST', '/quotas/', 'Create quota'], ['PATCH', '/quotas/:id', 'Update quota'], ['DELETE', '/quotas/:id', 'Delete quota'], ['POST', '/quotas/reset', 'Manual period reset'], ].map(([method, path, desc]) => ( {method} {path} {desc} ))}",
+    "page": "API Reference"
+  },
+  {
+    "title": "Experiments v1.6.9+",
+    "href": "/model-prism/api-reference#experiments-v169",
+    "text": "Method Endpoint Description {[ ['GET', '/experiments/', 'List experiments'], ['GET', '/experiments/:id', 'Get experiment'], ['POST', '/experiments/', 'Create experiment (draft)'], ['PATCH', '/experiments/:id', 'Update experiment'], ['DELETE', '/experiments/:id', 'Delete experiment'], ['GET', '/experiments/:id/results', 'Get analysis with z-test'], ['POST', '/experiments/:id/start', 'Start experiment'], ['POST', '/experiments/:id/stop', 'Stop experiment'], ].map(([method, path, desc]) => ( {metho",
+    "page": "API Reference"
+  },
+  {
+    "title": "Webhooks v1.6.9+",
+    "href": "/model-prism/api-reference#webhooks-v169",
+    "text": "Method Endpoint Description {[ ['GET', '/webhooks/', 'List webhooks'], ['GET', '/webhooks/:id', 'Get webhook'], ['POST', '/webhooks/', 'Create webhook (auto-generates HMAC secret)'], ['PATCH', '/webhooks/:id', 'Update webhook'], ['DELETE', '/webhooks/:id', 'Delete webhook'], ['POST', '/webhooks/:id/test', 'Send test event'], ['GET', '/webhooks/:id/logs', 'Get delivery log'], ['POST', '/webhooks/:id/rotate-secret', 'Rotate HMAC secret'], ].map(([method, path, desc]) => ( {method} {path} {desc} ))",
+    "page": "API Reference"
+  },
+  {
+    "title": "Multi-Key v1.6.9+",
+    "href": "/model-prism/api-reference#multi-key-v169",
+    "text": "Method Endpoint Description {[ ['GET', '/tenants/:id/keys', 'List all API keys'], ['POST', '/tenants/:id/keys', 'Add auto-generated key'], ['POST', '/tenants/:id/keys/custom', 'Add custom key'], ['PATCH', '/tenants/:id/keys/:keyId', 'Update key (enable/disable, label)'], ['DELETE', '/tenants/:id/keys/:keyId', 'Revoke key'], ].map(([method, path, desc]) => ( {method} {path} {desc} ))}",
+    "page": "API Reference"
+  },
+  {
+    "title": "Tenant Portal API",
+    "href": "/model-prism/api-reference#tenant-portal-api",
+    "text": "Self-service API for the tenant-admin role. Base URL: https://your-host/api/tenant-portal Method Endpoint Description {[ ['GET', '/mine', 'List own tenants'], ['GET', '/:id', 'Get tenant config'], ['PUT', '/:id/model-config', 'Update model access (mode + list)'], ['GET', '/:id/models', 'List accessible models'], ].map(([method, path, desc]) => ( {method} {path} {desc} ))}",
+    "page": "API Reference"
+  },
+  {
+    "title": "Global Endpoints",
+    "href": "/model-prism/api-reference#global-endpoints",
+    "text": "Method Endpoint Auth Description {[ ['GET', '/health', 'None', 'Server health + DB status'], ['GET', '/metrics', 'None', 'Prometheus metrics'], ['GET', '/api/prism/setup/status', 'None', 'Whether first-run setup is complete'], ['POST', '/api/prism/setup/admin', 'None', 'Create initial admin account (setup only)'], ['POST', '/api/prism/auth/login', 'None', 'Login → JWT'], ['GET', '/api/prism/auth/me', 'JWT', 'Current user info'], ].map(([method, path, auth, desc]) => ( {method} {path} {auth} {des",
+    "page": "API Reference"
+  },
+  {
+    "title": "System Overview",
+    "href": "/model-prism/architecture#system-overview",
+    "text": "Open Model Prism is a Node.js/Express backend that serves both the REST API and the compiled React frontend as static files. MongoDB is the only external dependency. It can run as a single container or split into a Control Plane and one or more Worker pods for horizontal scaling.",
+    "page": "Architecture"
+  },
+  {
+    "title": "Single-Pod (default)",
+    "href": "/model-prism/architecture#single-pod-default",
+    "text": "┌─────────────────────────────────────────────────────────────┐ │ Browser / Client Tools │ │ (OpenWebUI · Cursor · Continue · Claude Code · SDK · ...) │ └──────────────────┬──────────────────────────────────────────┘ │ HTTP / SSE ▼ ┌─────────────────────────────────────────────────────────────┐ │ Open Model Prism (Node.js 20, Express v5) │ │ │ │ ┌──────────────┐ ┌──────────────┐ ┌──────────────────┐ │ │ │ Admin UI │ │ Gateway API │ │ Static Frontend │ │ │ │ /api/prism/ │ │ /api/:slug │ │ React +",
+    "page": "Architecture"
+  },
+  {
+    "title": "Scaled Deployment (Control Plane + Workers)",
+    "href": "/model-prism/architecture#scaled-deployment-control-plane-workers",
+    "text": "For larger teams, the gateway can be split from the Admin UI and scaled independently using NODE_ROLE : Clients (Continue · Cursor · Claude Code · Open WebUI · SDK ...) │ ├── /api/:tenant/v1/* ──────────────────────────┐ │ │ └── /* (admin UI, /api/prism/admin/*) ──────┐ │ │ │ ┌────────────────────────▼─┐ │ │ Control Plane │ │ │ NODE_ROLE=control │ │ │ Admin UI + Admin API │ │ └──────────────────────────┘ │ │ ┌───────────────┬──────────────────────────▼──┐ │ Worker Pod 1 │ Worker Pod 2 │ ... │ NO",
+    "page": "Architecture"
+  },
+  {
+    "title": "Deployment Modes",
+    "href": "/model-prism/architecture#deployment-modes",
+    "text": "Three modes are available via the NODE_ROLE environment variable: NODE_ROLE Serves Use case full (default) Admin UI + Gateway Development, small teams (<50 users) control Admin UI + Admin API only Control plane in a scaled deployment worker Gateway only ( /api/:tenant/v1/* ) Horizontally scaled request handling All pods share a single MongoDB database. Worker pods are stateless and can be added or removed without downtime. See Operations for capacity planning and configuration details.",
+    "page": "Architecture"
+  },
+  {
+    "title": "Request Flow (Gateway)",
+    "href": "/model-prism/architecture#request-flow-gateway",
+    "text": "Every client request hitting /api/:tenant/v1/... passes through these stages: POST /api/team-alpha/v1/chat/completions │ ├─ 1. Tenant Auth │ Look up tenant by slug -> find API key hash -> verify Bearer token │ Check key enabled, not expired │ Load tenant config (providers, routing, model aliases) — cached 60s │ ├─ 2. Per-Tenant Rate Limiting │ Sliding window in-memory counter (requestsPerMinute per tenant) │ Returns 429 on breach │ ├─ 3. Model Alias Resolution │ Resolve tenant-specific aliases e",
+    "page": "Architecture"
+  },
+  {
+    "title": "Directory Structure",
+    "href": "/model-prism/architecture#directory-structure",
+    "text": "open-model-prism/ ├── server/ Express backend (ESM, Node 20+) │ ├── index.js Entry point: routes, middleware, graceful shutdown │ ├── config.js Env-var config with defaults │ ├── db.js Mongoose connection + retry logic │ │ │ ├── models/ Mongoose schemas │ │ ├── Tenant.js slug, apiKeyHash, providers, routing, modelConfig │ │ ├── Provider.js type, encrypted credentials, discoveredModels │ │ ├── User.js roles, LDAP flag, tenants, lastLogin │ │ ├── RoutingCategory.js key, costTier, defaultModel, exa",
+    "page": "Architecture"
+  },
+  {
+    "title": "Admin UI (JWT)",
+    "href": "/model-prism/architecture#admin-ui-jwt",
+    "text": "All /api/prism/admin/* and /api/prism/auth/* endpoints use JWT Bearer tokens: POST /api/prism/auth/login -> { token: \"eyJ...\" } GET /api/prism/admin/... -> Authorization: Bearer eyJ... Tokens are signed with JWT_SECRET , contain { id, username, role, tenants } , and have no built-in expiry (server restart invalidates all tokens).",
+    "page": "Architecture"
+  },
+  {
+    "title": "Gateway (Per-Tenant API Key)",
+    "href": "/model-prism/architecture#gateway-per-tenant-api-key",
+    "text": "omp-<64 hex chars> (example: omp-a3f9b2...) The key is shown only once on creation. The stored value is SHA-256(key) . Checks performed on every request: Extract Bearer token → compute SHA-256 → lookup tenant keyEnabled === false → 401 key_disabled keyExpiresAt < now → 401 key_expired Tenant enabled === false → 401 tenant_disabled",
+    "page": "Architecture"
+  },
+  {
+    "title": "Credential Encryption",
+    "href": "/model-prism/architecture#credential-encryption",
+    "text": "Provider API keys and secrets are encrypted at rest using AES-256-GCM: Format: enc:<ivHex>:<authTagHex>:<ciphertextHex> Key: ENCRYPTION_KEY env var (32-byte hex)",
+    "page": "Architecture"
+  },
+  {
+    "title": "RBAC Roles",
+    "href": "/model-prism/architecture#rbac-roles",
+    "text": "Role Scope Key permissions admin Global Everything — users, LDAP, providers, tenants, categories maintainer Global Providers, tenants, categories, model registry, analytics finops Global Read-only: dashboard, costs, request log (all tenants) tenant-viewer Assigned tenants Read-only: dashboard scoped to own tenants tenant-admin Assigned tenants Self-service: model access config, generate client configs Role checks are applied in middleware before route handlers. Admin/maintainer bypass all tenant",
+    "page": "Architecture"
+  },
+  {
+    "title": "Offline Mode",
+    "href": "/model-prism/architecture#offline-mode",
+    "text": "Set OFFLINE=true to disable all outbound internet calls: modelEnrichmentService loads data/modelsDev.snapshot.json instead of fetching models.dev Token estimation uses the built-in character-based heuristic (no external tokenizer) All routing, gateway, and admin functionality works fully offline No other behavior changes. Suitable for air-gapped enterprise environments.",
+    "page": "Architecture"
+  },
+  {
+    "title": "Rate Limiting",
+    "href": "/model-prism/architecture#rate-limiting",
+    "text": "Three independent limiters are applied at different layers: Layer Limit Scope Auth endpoints 20 req/min Per IP — brute-force protection Admin API 300 req/min Per IP Gateway 600 req/min Per IP (outer layer) Per-tenant gateway Configurable req/min Per tenant (sliding window, in-memory)",
+    "page": "Architecture"
+  },
+  {
+    "title": "Analytics Pipeline",
+    "href": "/model-prism/architecture#analytics-pipeline",
+    "text": "Request analytics are written asynchronously (fire-and-forget via setImmediate ) to avoid adding latency to the gateway response path: Gateway response sent to client │ └─ setImmediate -> analyticsEngine.logRequest() │ ├─ upsert RequestLog document ├─ $inc DailyStat (cost, tokens, requests) └─ $inc DailyUserStat (per user breakdown) If the analytics write fails, the gateway request is unaffected.",
+    "page": "Architecture"
+  },
+  {
+    "title": "Prerequisites",
+    "href": "/model-prism/getting-started#prerequisites",
+    "text": "Node.js 20+ (recommended: via nvm ) Docker & Docker Compose (for MongoDB, or run MongoDB locally) just (optional, for convenience commands) — install: brew install just / cargo install just",
+    "page": "Getting Started"
+  },
+  {
+    "title": "Option 1: Docker Compose (recommended)",
+    "href": "/model-prism/getting-started#option-1-docker-compose-recommended",
+    "text": "git clone https://github.com/ai-weisser-dev/model-prism cd model-prism cp .env.example .env # edit JWT_SECRET and ENCRYPTION_KEY docker compose up -d Open http://localhost:3000 — the setup wizard will guide you through initial configuration.",
+    "page": "Getting Started"
+  },
+  {
+    "title": "Environment Variables",
+    "href": "/model-prism/getting-started#environment-variables",
+    "text": "Variable Required Default Description MONGODB_URI No mongodb://mongodb:27017/openmodelprism MongoDB connection string JWT_SECRET Yes change-me Secret for JWT token signing — change in production ENCRYPTION_KEY Yes change-me-32-chars 32-byte hex key for AES-256-GCM credential encryption PORT No 3000 HTTP server port CORS_ORIGINS No * Allowed CORS origins (comma-separated) OFFLINE No false true = disable all outbound internet (air-gapped environments) LOG_LEVEL No info debug / info / warn / error ",
+    "page": "Getting Started"
+  },
+  {
+    "title": "Option 2: Local Development (hot reload)",
+    "href": "/model-prism/getting-started#option-2-local-development-hot-reload",
+    "text": "# Install dependencies just install # or: cd server && npm install && cd ../frontend && npm install # Start MongoDB docker compose up -d mongodb # Terminal 1 — backend with file watching just dev-backend # or: cd server && npm run dev # Terminal 2 — frontend (Vite HMR) just dev-frontend # or: cd frontend && npm run dev Frontend: http://localhost:5173 (proxies /api to backend) Backend: http://localhost:3000",
+    "page": "Getting Started"
+  },
+  {
+    "title": "Setup Wizard",
+    "href": "/model-prism/getting-started#setup-wizard",
+    "text": "The wizard runs on first start. It guides you through four steps: Admin Account — create the first admin user (username + password, min 8 chars) First Provider — connect an LLM provider (OpenAI, Ollama, OpenRouter, etc.) Enter a name, select type, enter base URL (no /v1 suffix) and API key Click Test & Add Provider — connection is verified and models discovered automatically Optional: test a model in the built-in chat widget before continuing Click Skip for now if you want to add providers later",
+    "page": "Getting Started"
+  },
+  {
+    "title": "First Tenant",
+    "href": "/model-prism/getting-started#first-tenant",
+    "text": "Go to Tenants in the sidebar Click Add Tenant Choose a slug (e.g. team-alpha ) — this determines your gateway URL Assign one or more providers Click Save and copy the API key — shown only once Your gateway endpoint is now live: https://your-host/api/team-alpha/v1",
+    "page": "Getting Started"
+  },
+  {
+    "title": "OpenAI SDK",
+    "href": "/model-prism/getting-started#openai-sdk",
+    "text": "from openai import OpenAI client = OpenAI( api_key=\"omp-your-api-key\", base_url=\"http://localhost:3000/api/team-alpha/v1\", ) response = client.chat.completions.create( model=\"gpt-4o\", # any model from your providers messages=[{\"role\": \"user\", \"content\": \"Hello!\"}] ) print(response.choices[0].message.content)",
+    "page": "Getting Started"
+  },
+  {
+    "title": "Auto-Routing",
+    "href": "/model-prism/getting-started#auto-routing",
+    "text": "response = client.chat.completions.create( model=\"auto\", # Open Model Prism chooses the best model messages=[{\"role\": \"user\", \"content\": \"Write a Python function to parse JSON\"}] ) # Response includes routing info: # response.auto_routing.category -> \"code_generation\" # response.auto_routing.model_id -> \"deepseek-coder-v2\" # response.cost_info.saved -> 0.0042",
+    "page": "Getting Started"
+  },
+  {
+    "title": "curl",
+    "href": "/model-prism/getting-started#curl",
+    "text": "curl http://localhost:3000/api/team-alpha/v1/chat/completions \\ -H \"Authorization: Bearer omp-your-api-key\" \\ -H \"Content-Type: application/json\" \\ -d '{\"model\": \"auto\", \"messages\": [{\"role\": \"user\", \"content\": \"Hello!\"}]}'",
+    "page": "Getting Started"
+  },
+  {
+    "title": "Connecting Client Tools",
+    "href": "/model-prism/getting-started#connecting-client-tools",
+    "text": "Use the Generate Config button on the Tenants page to get ready-to-paste configuration for: Continue ( ~/.continue/config.yaml ) OpenCode ( ~/.config/opencode/config.json ) Cursor (Settings → Models → Override Base URL) Claude Code ( ANTHROPIC_BASE_URL environment variable) Open WebUI (Docker Compose env vars) Python / Node.js SDK (code snippets)",
+    "page": "Getting Started"
+  },
+  {
+    "title": "Auto-Routing Setup",
+    "href": "/model-prism/getting-started#auto-routing-setup",
+    "text": "To enable auto-routing for a tenant: Go to Tenants → edit the tenant → Routing tab Select a Classifier Provider and Classifier Model (a small, fast model like gpt-4o-mini ) Configure Override Rules as needed Go to Categories and set a defaultModel for each tier (or apply a preset profile) Send requests with \"model\": \"auto\" See Routing for a full description of how the routing pipeline works.",
+    "page": "Getting Started"
+  },
+  {
+    "title": "Production Deployment",
+    "href": "/model-prism/getting-started#production-deployment",
+    "text": "# Build image docker build -t model-prism . # Run docker run -d \\ -p 3000:3000 \\ -e MONGODB_URI=mongodb://your-mongo:27017/openmodelprism \\ -e JWT_SECRET=your-long-random-secret \\ -e ENCRYPTION_KEY=your-32-char-hex-key \\ -e NODE_ENV=production \\ model-prism For air-gapped environments: docker run -d ... -e OFFLINE=true model-prism",
+    "page": "Getting Started"
+  },
+  {
+    "title": "Kubernetes / Helm",
+    "href": "/model-prism/getting-started#kubernetes-helm",
+    "text": "Model Prism is available as a Helm chart for Kubernetes deployments.",
+    "page": "Getting Started"
+  },
+  {
+    "title": "Quick Install",
+    "href": "/model-prism/getting-started#quick-install",
+    "text": "helm repo add ohara https://ai-ohara-systems.github.io/ohara-helm helm repo update helm install model-prism ohara/model-prism \\ --namespace model-prism \\ --create-namespace This deploys Model Prism in standalone mode with bundled MongoDB. Open the setup wizard at your ingress or port-forward: kubectl port-forward svc/model-prism 3000:80 -n model-prism # → http://localhost:3000",
+    "page": "Getting Started"
+  },
+  {
+    "title": "Custom Values",
+    "href": "/model-prism/getting-started#custom-values",
+    "text": "helm install model-prism ohara/model-prism \\ --namespace model-prism \\ --create-namespace \\ -f my-values.yaml",
+    "page": "Getting Started"
+  },
+  {
+    "title": "Scaled Mode",
+    "href": "/model-prism/getting-started#scaled-mode",
+    "text": "For production, run separate control-plane and worker pods: # values-scaled.yaml mode: scaled scaled: control: replicaCount: 2 worker: replicaCount: 3 autoscaling: enabled: true minReplicas: 3 maxReplicas: 20 targetCPUUtilization: 65 mongodb: enabled: false externalMongodb: uri: \"mongodb+srv://user:pass@cluster.example.com/modelprism\" ingress: enabled: true className: nginx hosts: - host: prism.example.com paths: - path: / pathType: Prefix tls: - secretName: prism-tls hosts: - prism.example.com",
+    "page": "Getting Started"
+  },
+  {
+    "title": "Upgrading",
+    "href": "/model-prism/getting-started#upgrading",
+    "text": "helm repo update helm upgrade model-prism ohara/model-prism \\ --namespace model-prism \\ -f my-values.yaml See the full Helm chart documentation for all configuration options, enterprise setup, and troubleshooting.",
+    "page": "Getting Started"
+  },
+  {
+    "title": "Useful Commands",
+    "href": "/model-prism/getting-started#useful-commands",
+    "text": "just # Show all available commands just install # Install all dependencies just dev # Start backend + frontend in dev mode just docker-up # Start with Docker Compose just docker-rebuild # Rebuild and restart just docker-logs # View application logs just mongo-shell # Open MongoDB shell just clean # Remove everything just release 1.0.0 # Tag and push a release",
+    "page": "Getting Started"
+  },
+  {
+    "title": "Model Prism",
+    "href": "/model-prism#model-prism",
+    "text": "v1.10.5 Open Model Prism is a multi-tenant OpenAI-compatible LLM gateway with intelligent routing, cost tracking, and self-optimizing model selection. Connect multiple LLM providers, route requests to the optimal model, track costs per team, and let the built-in Benchmark Agent continuously fine-tune routing quality based on real production data.",
+    "page": "Model Prism"
+  },
+  {
+    "title": "Multi-Provider",
+    "href": "/model-prism#multi-provider",
+    "text": "Connect OpenAI, Anthropic, Ollama, Azure, Bedrock, OpenRouter, vLLM, and any OpenAI-compatible endpoint simultaneously.",
+    "page": "Model Prism"
+  },
+  {
+    "title": "Intelligent Routing",
+    "href": "/model-prism#intelligent-routing",
+    "text": "Send model: \"auto\" and let the routing engine classify requests into 45 categories and select the optimal model.",
+    "page": "Model Prism"
+  },
+  {
+    "title": "Cost Tracking",
+    "href": "/model-prism#cost-tracking",
+    "text": "Per-request cost calculation, daily aggregates, baseline vs actual comparisons, and real-time dashboards showing savings from intelligent routing.",
+    "page": "Model Prism"
+  },
+  {
+    "title": "Multi-Tenant",
+    "href": "/model-prism#multi-tenant",
+    "text": "Isolated gateway endpoints per team with their own API keys, rate limits, model access controls, and routing configuration.",
+    "page": "Model Prism"
+  },
+  {
+    "title": "Self-Optimizing Routing",
+    "href": "/model-prism#self-optimizing-routing",
+    "text": "New The built-in Benchmark Agent analyzes every routing decision against actual outcomes. It detects over-routing and under-routing patterns, then adjusts thresholds, keyword rules, and model priorities — with mandatory dry-run simulation before any change goes live. Set it up once, and routing quality improves automatically over time.",
+    "page": "Model Prism"
+  },
+  {
+    "title": "Session Tracking",
+    "href": "/model-prism#session-tracking",
+    "text": "New Group related requests into sessions via the x-session-id header. Track conversational coherence, analyze session-level cost and quality, and export structured activity dumps for AI-driven evaluation.",
+    "page": "Model Prism"
+  },
+  {
+    "title": "Built-in WebChat",
+    "href": "/model-prism#built-in-webchat",
+    "text": "New Chat with any available model directly from the admin UI. Lightweight SSE streaming (no WebSockets required), model selection dropdown with auto-routing as default, and real-time routing info badges showing which model was selected, category, tier, and confidence.",
+    "page": "Model Prism"
+  },
+  {
+    "title": "Getting Started",
+    "href": "/model-prism#getting-started",
+    "text": "Installation, setup wizard, first tenant, and gateway usage.",
+    "page": "Model Prism"
+  },
+  {
+    "title": "Architecture",
+    "href": "/model-prism#architecture",
+    "text": "System overview, request flow, directory structure, and security.",
+    "page": "Model Prism"
+  },
+  {
+    "title": "Providers",
+    "href": "/model-prism#providers",
+    "text": "Supported provider types, model discovery, and connection management.",
+    "page": "Model Prism"
+  },
+  {
+    "title": "Tenants",
+    "href": "/model-prism#tenants",
+    "text": "Tenant configuration, API keys, model access control, and aliases.",
+    "page": "Model Prism"
+  },
+  {
+    "title": "Routing",
+    "href": "/model-prism#routing",
+    "text": "Intelligent model routing pipeline, cost tiers, signal extraction, and categories.",
+    "page": "Model Prism"
+  },
+  {
+    "title": "Analytics",
+    "href": "/model-prism#analytics",
+    "text": "Cost tracking, dashboards, request logs, and Prometheus metrics.",
+    "page": "Model Prism"
+  },
+  {
+    "title": "Benchmark Agent",
+    "href": "/model-prism#benchmark-agent",
+    "text": "New Self-optimizing routing, session tracking, activity dumps, and AI-driven quality evaluation.",
+    "page": "Model Prism"
+  },
+  {
+    "title": "Operations",
+    "href": "/model-prism#operations",
+    "text": "Deployment modes, scaling, load balancing, security, and monitoring.",
+    "page": "Model Prism"
+  },
+  {
+    "title": "API Reference",
+    "href": "/model-prism#api-reference",
+    "text": "Gateway API, Admin API, Tenant Portal API, and global endpoints.",
+    "page": "Model Prism"
+  },
+  {
+    "title": "Deployment Modes",
+    "href": "/model-prism/operations#deployment-modes",
+    "text": "Open Model Prism supports three deployment modes controlled by the NODE_ROLE environment variable: Mode NODE_ROLE Description {[ ['Full (default)', 'full', 'Admin UI + Gateway in one pod. Use for dev and small deployments ( ( {mode} {role} {desc} ))}",
+    "page": "Operations Guide"
+  },
+  {
+    "title": "Single-Pod Deployment (default)",
+    "href": "/model-prism/operations#single-pod-deployment-default",
+    "text": "docker compose up -d Everything runs in one container. Good for local development and small teams (<50 developers). MongoDB starts with --replSet rs0 to enable Change Streams. If unavailable, the system falls back to polling (15-second interval) automatically.",
+    "page": "Operations Guide"
+  },
+  {
+    "title": "Scaled Deployment (Control Plane + Workers)",
+    "href": "/model-prism/operations#scaled-deployment-control-plane-workers",
+    "text": "docker compose -f docker-compose.yml -f docker-compose.scaled.yml up -d --scale worker=3 1x Control Plane (port 3000) — Admin UI, Admin API, setup wizard, authentication N× Worker Pods — Gateway only, handling all /api/:tenant/v1/* traffic Load balancer routes gateway traffic to workers and admin traffic to the control plane All state is in MongoDB — worker pods are fully stateless and can be added or removed at any time.",
+    "page": "Operations Guide"
+  },
+  {
+    "title": "Capacity Planning",
+    "href": "/model-prism/operations#capacity-planning",
+    "text": "Team Size Workers Estimated Load Notes {[ ['1–20 developers', '1 (full mode)', '~300 req/min', 'Single pod is fine'], ['20–80 developers', '2–3 workers', '600–2,400 req/min', '--scale worker=2'], ['80–200 developers', '4–6 workers', '2,400–6,000 req/min', 'Add nginx in front'], ['200+ developers', '8+ workers', '6,000+ req/min', 'Consider a dedicated MongoDB cluster'], ].map(([size, workers, load, notes]) => ( {size} {workers} {load} {notes} ))}",
+    "page": "Operations Guide"
+  },
+  {
+    "title": "Load Balancer Configuration",
+    "href": "/model-prism/operations#load-balancer-configuration",
+    "text": "Example nginx upstream config for a scaled deployment: upstream omp_workers { server worker1:3000; server worker2:3000; server worker3:3000; } upstream omp_control { server control:3000; } server { listen 443 ssl; server_name omp.example.com; location /api/ { location ~ ^/api/[^/]+/v1/ { proxy_pass http://omp_workers; proxy_http_version 1.1; proxy_set_header Connection \"\"; } location /api/prism/admin/ { proxy_pass http://omp_control; } location /api/prism/auth/ { proxy_pass http://omp_control; }",
+    "page": "Operations Guide"
+  },
+  {
+    "title": "Credentials and Secrets",
+    "href": "/model-prism/operations#credentials-and-secrets",
+    "text": "Provider credentials: encrypted at rest with AES-256-GCM Tenant API keys: SHA-256 hashed — never stored in plaintext Admin passwords: bcrypt",
+    "page": "Operations Guide"
+  },
+  {
+    "title": "Network",
+    "href": "/model-prism/operations#network",
+    "text": "Terminate HTTPS at the load balancer. Model Prism speaks HTTP internally. Set CORS_ORIGINS to specific domains (not * ) in production Firewall the /metrics endpoint — it is a Prometheus scrape target for internal monitoring only",
+    "page": "Operations Guide"
+  },
+  {
+    "title": "Environment Variables",
+    "href": "/model-prism/operations#environment-variables",
+    "text": "Variable Default Description {[ ['NODE_ROLE', 'full', 'full / control / worker'], ['MONGO_URI', 'mongodb://localhost:27017/openmodelprism', 'MongoDB connection string'], ['JWT_SECRET', '(required)', 'JWT signing secret — 32+ characters'], ['ENCRYPTION_KEY', '(required)', '32-byte hex string for AES-256-GCM'], ['PORT', '3000', 'Server listen port'], ['CORS_ORIGINS', '*', 'Comma-separated list of allowed origins'], ['LICENSE_KEY', '(optional)', 'Enterprise license key — also persisted in MongoDB a",
+    "page": "Operations Guide"
+  },
+  {
+    "title": "System Dashboard",
+    "href": "/model-prism/operations#system-dashboard",
+    "text": "Available at /system (admin and maintainer roles only). Shows the live state of all pods registered with the shared MongoDB: pod list with role badges, per-pod resource metrics (heap, RSS, CPU), per-pod request rate, 60-minute traffic chart, and provider error rates. Pod heartbeats are written to MongoDB every 30 seconds with a 90-second TTL. Pods that stop sending heartbeats disappear automatically. Runtime controls (apply immediately, no restart): log level, prompt logging toggle, file logging",
+    "page": "Operations Guide"
+  },
+  {
+    "title": "Backup",
+    "href": "/model-prism/operations#backup",
+    "text": "Back up the openmodelprism MongoDB database — it contains all tenant configuration, provider configuration, routing rules, users, and analytics. Provider credentials are encrypted with ENCRYPTION_KEY — back up this value separately and store it securely. Request logs grow approximately 1 KB per request. For high-volume deployments, add a TTL index on RequestLog.timestamp to cap collection size.",
+    "page": "Operations Guide"
+  },
+  {
+    "title": "Upgrading",
+    "href": "/model-prism/operations#upgrading",
+    "text": "git pull docker compose build docker compose up -d All application state is stored in MongoDB. For zero downtime, bring up new pods before terminating old ones — the load balancer will route traffic away from pods that fail their /health check.",
+    "page": "Operations Guide"
+  },
+  {
+    "title": "CVE Fixes v1.6.5",
+    "href": "/model-prism/operations#cve-fixes-v165",
+    "text": "Node 22 Alpine base image with all npm CVEs resolved npm , npx , and corepack removed from production image Alpine APK upgraded for zlib CVEs",
+    "page": "Operations Guide"
+  },
+  {
+    "title": "Node 22 Base Image v1.6.4+",
+    "href": "/model-prism/operations#node-22-base-image-v164",
+    "text": "Dockerfile upgraded from node:20-alpine to node:22-alpine Version display reads dynamically from package.json (no more hardcoded values)",
+    "page": "Operations Guide"
+  },
+  {
+    "title": "Automatic max_tokens Clamping v1.6.3+",
+    "href": "/model-prism/operations#automatic-maxtokens-clamping-v163",
+    "text": "Gateway silently clamps max_tokens to the model's known output limit before forwarding Prevents \"max tokens exceeds model limit\" errors from providers like AWS Bedrock Limit resolved from discovered model metadata or the built-in model registry",
+    "page": "Operations Guide"
+  },
+  {
+    "title": "Whitelist Bypass for Internal Models v1.6.3+",
+    "href": "/model-prism/operations#whitelist-bypass-for-internal-models-v163",
+    "text": "auto-prism (and future internal meta-models) always bypasses tenant whitelist/blacklist filtering Server-side whitelist enforcement on chat completions and embeddings endpoints",
+    "page": "Operations Guide"
+  },
+  {
+    "title": "Provider Management",
+    "href": "/model-prism/providers#provider-management",
+    "text": "A provider is any LLM backend that Open Model Prism can forward requests to. Multiple providers can be connected simultaneously; each tenant selects which providers it has access to.",
+    "page": "Providers"
+  },
+  {
+    "title": "Supported Provider Types",
+    "href": "/model-prism/providers#supported-provider-types",
+    "text": "Type Description Notes openai OpenAI Compatible Direct API key auth. Covers OpenAI, LitServe, LocalAI, LM Studio, and any OpenAI-compatible endpoint. bedrock AWS Bedrock Native Converse API, Access Key + Secret, VPC endpoint support, IAM roles (default credential chain), streaming, tool calling",
+    "page": "Providers"
+  },
+  {
+    "title": "Bedrock VPC Endpoint Support v1.10.4",
+    "href": "/model-prism/providers#bedrock-vpc-endpoint-support-v1104",
+    "text": "For private connectivity via AWS PrivateLink, enable \"Use custom VPC endpoints\" in the provider form. Two separate endpoints are supported: one for the Runtime (Converse API chat/streaming) and one for the Control Plane (model listing). Most users don't need this — the default public AWS endpoints work without configuration. The Bedrock adapter supports HTTP proxies via the provider's proxy setting. This is required in corporate networks where VPC endpoints are only reachable through a proxy ser",
+    "page": "Providers"
+  },
+  {
+    "title": "Azure Deployment Configuration v1.10.4",
+    "href": "/model-prism/providers#azure-deployment-configuration-v1104",
+    "text": "Azure does not support listing deployments via the Data Plane API. You must configure deployment names manually. During model discovery, Model Prism automatically detects which deployments use the Chat Completions API and which use the newer Responses API (e.g. gpt-5.3-codex). See the Azure REST API specs for details. Type Description Notes azure-proxy Azure OpenAI via Proxy v1.10.1 Legacy option for existing OpenAI-compatible Azure proxy setups ollama Ollama Local models. Probes /api/tags for m",
+    "page": "Providers"
+  },
+  {
+    "title": "Authentication Methods",
+    "href": "/model-prism/providers#authentication-methods",
+    "text": "Different provider types use different authentication mechanisms: Method Provider Types Details API Key openai , azure , openrouter Sent via Authorization: Bearer header (OpenAI/OpenRouter) or api-key header (Azure) AWS Credentials bedrock Access Key ID + Secret Access Key, used to sign AWS SigV4 requests IAM Role bedrock Default credential chain — automatic on EC2, ECS, or Lambda with an attached IAM role None ollama , local endpoints No authentication required for local inference servers",
+    "page": "Providers"
+  },
+  {
+    "title": "Per-Provider Proxy v1.10.1",
+    "href": "/model-prism/providers#per-provider-proxy-v1101",
+    "text": "Each provider can optionally route all outbound HTTP requests through an HTTP proxy. This is useful in corporate networks where some providers require a proxy to reach the internet while others are accessible directly or via private endpoints. Enable the Use HTTP Proxy toggle in the provider form Enter the proxy URL (e.g. http://proxy.corp.example:8080 ) The proxy setting is per-provider — different providers can use different proxies, or no proxy at all Supports HTTP and HTTPS proxy URLs",
+    "page": "Providers"
+  },
+  {
+    "title": "Adding a Provider",
+    "href": "/model-prism/providers#adding-a-provider",
+    "text": "Go to Providers in the sidebar Click Add Provider Enter a name and select the provider type Enter the Base URL — do not include /v1 or /api/v1 (auto-detected) Enter the API Key (leave empty for local providers like Ollama) Click Test Connection — the connection check probes multiple path variants and logs results Click Discover Models to auto-populate the model list",
+    "page": "Providers"
+  },
+  {
+    "title": "URL Detection",
+    "href": "/model-prism/providers#url-detection",
+    "text": "Open Model Prism automatically detects the correct API path by probing: <baseUrl>/v1/models <baseUrl>/api/v1/models <baseUrl>/models The detected path is stored as config.options.apiPath and used for all subsequent requests. The setup wizard and provider form both warn if the URL contains a /v1 suffix and offer a one-click auto-fix.",
+    "page": "Providers"
+  },
+  {
+    "title": "HTTP → HTTPS Upgrade",
+    "href": "/model-prism/providers#http-https-upgrade",
+    "text": "If a connection test succeeds over HTTP but fails over HTTPS, the form suggests switching to HTTPS. If it succeeds over HTTP only, a warning is shown — the connection works but HTTPS is recommended.",
+    "page": "Providers"
+  },
+  {
+    "title": "Model Discovery",
+    "href": "/model-prism/providers#model-discovery",
+    "text": "After a successful connection test, click Discover Models (or the provider form triggers it automatically). The discovery process: Fetches /v1/models from the provider For each model: looks up the local model registry ( modelRegistry.js ) for tier, pricing, categories, and benchmark scores Falls back to models.dev API (or offline snapshot if OFFLINE=true ) for additional enrichment Saves results to provider.discoveredModels[] Discovered models can be individually edited in the Models page: Adjus",
+    "page": "Providers"
+  },
+  {
+    "title": "Editable Context Window & Max Output Tokens v1.6.10+",
+    "href": "/model-prism/providers#editable-context-window-max-output-tokens-v1610",
+    "text": "The Models page now allows editing contextWindow and maxOutputTokens per model (previously read-only). When manually set, values are protected from refresh override via the manualContext flag (same pattern as manualPricing ) On model discover/refresh: if manualContext is not set, context values are enriched from the registry",
+    "page": "Providers"
+  },
+  {
+    "title": "Auto-Refresh Pricing on Discover v1.6.8+",
+    "href": "/model-prism/providers#auto-refresh-pricing-on-discover-v168",
+    "text": "Provider-specific pricing tables override generic registry pricing during model discovery. Pricing is refreshed on every discover unless the admin set it manually ( manualPricing: true ).",
+    "page": "Providers"
+  },
+  {
+    "title": "Bulk Visibility Toggle v1.6.12+",
+    "href": "/model-prism/providers#bulk-visibility-toggle-v1612",
+    "text": "\"Show selected\" / \"Hide selected\" buttons in the Models page bulk action bar Hidden models are excluded from tenant routing selectors (classifier, default, baseline, fallback) Hidden models still appear in whitelist/blacklist config with a \"hidden\" badge",
+    "page": "Providers"
+  },
+  {
+    "title": "Model Search & Bulk Selection v1.6.7+",
+    "href": "/model-prism/providers#model-search-bulk-selection-v167",
+    "text": "Search field to filter models by name in the Models page \"Select all / Deselect all\" buttons that operate on filtered results Shift-click selects/deselects a range of models",
+    "page": "Providers"
+  },
+  {
+    "title": "Auto-Suggest",
+    "href": "/model-prism/providers#auto-suggest",
+    "text": "Each model in the registry has an Auto-Suggest button (wand icon) that fills tier, pricing, and categories from the built-in model registry using fuzzy matching. The matching logic runs three passes: Exact ID match Registry pattern is a substring of the model ID Model ID is a substring of the registry pattern",
+    "page": "Providers"
+  },
+  {
+    "title": "Model Registry",
+    "href": "/model-prism/providers#model-registry",
+    "text": "The local model registry ( server/data/modelRegistry.js ) contains metadata for 60+ models. Each model is assigned one of eight cost tiers v1.7.0+ : micro , minimal , low , medium , advanced , high , ultra , or critical . { id: 'claude-opus-4-6', family: 'claude', vendor: 'Anthropic', tier: 'ultra', // v1.7.0: expanded from 4 to 8 tiers inputPer1M: 5.00, // USD outputPer1M: 25.00, // USD contextWindow: 1000000, categories: ['reasoning_formal', 'code_generation', 'system_design'], patterns: ['opu",
+    "page": "Providers"
+  },
+  {
+    "title": "Benchmark Scores",
+    "href": "/model-prism/providers#benchmark-scores",
+    "text": "Benchmark scores (0-100 scale) are sourced from public benchmarks (ArtificialAnalysis, LMArena, HumanEval, MATH-500) and used by the routing engine to select the most capable model for a given task type. Axis Source benchmarks Used for routing categories intelligence MMLU, GPQA, LMSYS Arena General reasoning, research, document understanding coding HumanEval, SWE-bench Code generation, debugging, security review math MATH-500, AIME Reasoning formal, STEM science speed Time-to-first-token, throug",
+    "page": "Providers"
+  },
+  {
+    "title": "Connection Check",
+    "href": "/model-prism/providers#connection-check",
+    "text": "The connection check ( POST /api/prism/admin/providers/:id/check ) runs a detailed diagnostic: &#10003; Resolved base URL: https://api.openai.com &#10003; GET /v1/models returned 200 &#10003; Found 47 models &#10003; Test chat request succeeded (model: gpt-4o-mini) &#10003; Streaming test succeeded Each line is logged and displayed in the UI. If the check fails at any step, the log shows exactly where to help diagnose the issue.",
+    "page": "Providers"
+  },
+  {
+    "title": "Provider Adapters",
+    "href": "/model-prism/providers#provider-adapters",
+    "text": "All provider adapters extend BaseAdapter and implement: chat(request) — non-streaming chat completions stream(request, onChunk) — streaming chat completions embed(request) — embeddings listModels() — model discovery The OpenAI-compatible adapter handles the majority of providers. Ollama has a custom adapter that translates between the Ollama format and OpenAI format. Azure OpenAI has a native adapter with deployment-based routing, api-key header auth, and auto-model-fetch; a legacy azure-proxy t",
+    "page": "Providers"
+  },
+  {
+    "title": "RBAC & Roles v1.9.0+",
+    "href": "/model-prism/rbac#rbac-roles-v190",
+    "text": "Model Prism uses an 8-role RBAC system to control access to the admin UI, gateway, and configuration. Roles are assigned per user and enforced server-side on every API call.",
+    "page": "RBAC & Roles"
+  },
+  {
+    "title": "Roles",
+    "href": "/model-prism/rbac#roles",
+    "text": "Role Description Target User {[ ['admin', 'Full system access — manage everything including users and LDAP.', 'System owner'], ['maintainer', 'Config management — providers, tenants, routing, categories. No user management.', 'Platform / DevOps team'], ['finops', 'Cost visibility — dashboards, savings, quotas, routing config (read-only). No prompt access.', 'Finance / Controlling'], ['auditor', 'Read-only global view — all dashboards, system info, audit trail. No prompt access. Enterprise only.'",
+    "page": "RBAC & Roles"
+  },
+  {
+    "title": "Permission Matrix",
+    "href": "/model-prism/rbac#permission-matrix",
+    "text": "Detailed access per UI page and feature area. W = write, R = read-only, Own = assigned tenants only, ✓ = full access, — = no access. Page admin maint finops auditor t-maint t-admin t-viewer chat {[ ['Dashboard', '✓', '✓', '✓', '✓', '✓', '→My', '→My', '—'], ['Chat', '✓', '✓', '✓', '✓', '✓', '✓', '✓', '✓'], ['Providers', 'W', 'W', '—', '—', '—', '—', '—', '—'], ['Models', 'W', 'W', '—', '—', '—', '—', '—', '—'], ['Tenants', 'W', 'W', 'R', 'R', '—', '—', '—', '—'], ['Categories', 'W', 'W', 'R', 'R'",
+    "page": "RBAC & Roles"
+  },
+  {
+    "title": "Prompt Snapshot Filtering",
+    "href": "/model-prism/rbac#prompt-snapshot-filtering",
+    "text": "Prompt and response snapshots in request logs are only visible to roles that need them for debugging: Can see prompts Cannot see prompts admin , maintainer , tenant-maintainer finops , auditor , tenant-admin , tenant-viewer , chat-user Roles without prompt access see cost and routing metadata (model, tier, category, tokens, cost) but the promptSnapshot , responseSnapshot , and capturedPaths fields are stripped server-side.",
+    "page": "RBAC & Roles"
+  },
+  {
+    "title": "LDAP Integration",
+    "href": "/model-prism/rbac#ldap-integration",
+    "text": "When LDAP authentication is enabled, new users are provisioned automatically on first login. Default role: chat-user — new LDAP users get chat-only access by default. This ensures all employees can use the WebChat without needing individual admin setup. Group mapping: Map LDAP groups to Model Prism roles in Settings → LDAP. Users inherit the role from their first matching group. Example: cn=ai-admins → admin . Role override: Admins can manually override the LDAP-derived role for any user from th",
+    "page": "RBAC & Roles"
+  },
+  {
+    "title": "Configuration Audit Trail",
+    "href": "/model-prism/rbac#configuration-audit-trail",
+    "text": "Every change to routing config, tenant settings, category tiers, and model metadata is tracked automatically with before/after diffs. Visible in the Dashboard → Configuration Changes section. Admin: sees full audit trail with usernames Other roles: see what changed but username is anonymized Retention: 90 days (auto-deleted via TTL index) Tracked endpoints: rule-set create/update, tenant update, category update, model tier/pricing update",
+    "page": "RBAC & Roles"
+  },
+  {
+    "title": "Failed Request Resolution",
+    "href": "/model-prism/rbac#failed-request-resolution",
+    "text": "The Failed Requests page shows gateway errors. After fixing an issue (e.g. deploying a new version), resolve the old errors to keep the page actionable: \"Clear all current errors\" — bulk-resolves all errors before the current timestamp. Only admin and maintainer can resolve errors. Resolved errors hidden by default — the Failed Requests page filters out resolved errors. New errors after the resolve timestamp are always shown. Tracking: each resolved error records resolvedAt and resolvedBy for au",
+    "page": "RBAC & Roles"
+  },
+  {
+    "title": "Role Hierarchy",
+    "href": "/model-prism/rbac#role-hierarchy",
+    "text": "admin ├── maintainer │ ├── finops (cost visibility, no prompts) │ └── tenant-maintainer (scoped to assigned tenants) │ ├── tenant-admin (model whitelist only) │ └── tenant-viewer (read-only) ├── auditor (read-only global, Enterprise) └── chat-user (chat only, LDAP default)",
+    "page": "RBAC & Roles"
+  },
+  {
+    "title": "Changelog",
+    "href": "/model-prism/rbac#changelog",
+    "text": "After each update, a changelog modal appears automatically on login showing what's new. Access it anytime via Help → Changelog in the sidebar. The changelog is generated from CHANGELOG.md and served via GET /api/prism/admin/system/changelog .",
+    "page": "RBAC & Roles"
+  },
+  {
+    "title": "Intelligent Model Routing",
+    "href": "/model-prism/routing#intelligent-model-routing",
+    "text": "Open Model Prism routes incoming requests to the optimal model automatically when clients send \"model\": \"auto\" . This document describes the full routing pipeline, all signal sources, override rules, and how classifier context limits are handled.",
+    "page": "Routing"
+  },
+  {
+    "title": "Overview",
+    "href": "/model-prism/routing#overview",
+    "text": "Incoming Request (\"model\": \"auto\") │ ▼ ┌───────────────────────┐ │ Signal Extractor │ 0ms — no LLM call │ Token count │ │ Keywords / patterns │ │ System prompt role │ │ FIM / autocomplete │ ← v1.6.14 │ Tool-agent detection │ ← v1.6.15 │ Content type │ │ Conversation turns │ └──────────┬────────────┘ │ signals ▼ FIM request detected? YES ─────→ coding_autocomplete, low tier (pre-routed) NO Tool-agent detected? YES ─────→ tool_use, low tier (pre-routed) NO │ ▼ ┌───────────────────────┐ │ Override ",
+    "page": "Routing"
+  },
+  {
+    "title": "Cost Tiers v1.7.0+",
+    "href": "/model-prism/routing#cost-tiers-v170",
+    "text": "Every routing category belongs to one of eight cost tiers. The tier determines which class of model handles the request and its relative cost multiplier. Tier Cost Multiplier Example Use Case micro 0.01x FIM/autocomplete, tiny models (Llama 3.2-1B) minimal 0.05x Simple tasks (Claude 3 Haiku, Nova Micro) low 0.3x Cost-effective (Claude Haiku 4.5, Nova Lite, Qwen3-32B) medium 1.0x General purpose (GPT-4o, Mistral Large) advanced 2.5x Specialized (Devstral, Nova Pro, Qwen3 Coder) high 6.0x Complex ",
+    "page": "Routing"
+  },
+  {
+    "title": "Token Thresholds v1.7.0+",
+    "href": "/model-prism/routing#token-thresholds-v170",
+    "text": "Token count boundaries used for tier selection when the classifier is bypassed or as a baseline signal: Tier Token Threshold micro < 150 tokens minimal < 500 tokens low < 2,000 tokens medium < 15,000 tokens alwaysHigh &ge; 50,000 tokens (forces high tier regardless of other signals)",
+    "page": "Routing"
+  },
+  {
+    "title": "Signal Extraction",
+    "href": "/model-prism/routing#signal-extraction",
+    "text": "Before the LLM classifier is invoked, structural signals are extracted from the raw request. These signals are cheap (microseconds, no API calls) and often sufficient to make a routing decision.",
+    "page": "Routing"
+  },
+  {
+    "title": "Token Count",
+    "href": "/model-prism/routing#token-count",
+    "text": "The total token count of all messages (system + history + current user message) is the strongest single signal for tier selection. < 150 tokens -> micro tier candidate v1.7.0+ 150-500 -> minimal tier candidate 500-2 000 -> low tier candidate 2 000-15 000 -> medium tier candidate > 15 000 -> high tier candidate (long_context_processing) > 50 000 -> always high tier (alwaysHigh), regardless of other signals Token count is estimated offline using a character-based heuristic (~3.5 chars/token, code-",
+    "page": "Routing"
+  },
+  {
+    "title": "System Prompt Role Detection",
+    "href": "/model-prism/routing#system-prompt-role-detection",
+    "text": "The system prompt defines the \"mode\" of the entire session and overrides most other signals. \"You are a senior security auditor...\" -> code_security_review, high tier \"You are a customer support agent...\" -> customer_support, low tier \"You are a legal compliance advisor...\" -> legal_analysis, domain=legal, medium tier min \"You are a data scientist...\" -> data_analysis, medium tier If the system prompt matches a known role pattern, the category is set directly and the LLM classifier is skipped.",
+    "page": "Routing"
+  },
+  {
+    "title": "Keyword Rules (configurable)",
+    "href": "/model-prism/routing#keyword-rules-configurable",
+    "text": "Keyword rules scan the full message content for domain-specific terms. Each rule specifies: keywords — list of strings to search for (case-insensitive) match — any (one keyword sufficient) or all (all must appear) minMatches — minimum number of keyword hits required effect — what happens: override category, set a minimum tier, set a domain flag Built-in examples: Security Escalation: keywords: [private key, jwt, secret, vulnerability, CVE, exploit, crypto] match: any, minMatches: 2 effect: categ",
+    "page": "Routing"
+  },
+  {
+    "title": "Code Language Detection",
+    "href": "/model-prism/routing#code-language-detection",
+    "text": "The content is scanned for language-specific patterns to enable capability-based model selection: Patterns detected: .sol, pragma solidity, contract -> blockchain def , import , .py -> python SELECT, JOIN, CREATE TABLE -> sql BEGIN CERTIFICATE, -----BEGIN -> crypto/certificates func , go mod, := -> go A detected language influences which model is selected within the target tier — for example, routing Python code tasks to codestral or deepseek-coder-v2 instead of a general-purpose model of the sa",
+    "page": "Routing"
+  },
+  {
+    "title": "Content Type",
+    "href": "/model-prism/routing#content-type",
+    "text": "images in messages -> vision model required (see Vision Upgrade override) tool_calls in messages -> function-calling capable model required structured output schema -> JSON-mode capable model preferred streaming: false -> no streaming constraint — any model eligible",
+    "page": "Routing"
+  },
+  {
+    "title": "Conversation Turn Count",
+    "href": "/model-prism/routing#conversation-turn-count",
+    "text": "Longer conversations carry accumulated context and often involve follow-up complexity: turns 1-3 -> no effect turns 4-7 -> +1 tier upgrade (configurable) turns 8+ -> +1 tier upgrade, long_context_processing flag Turn-based upgrades are suppressed for categories that are inherently stateless (e.g. summarization_short , translation ).",
+    "page": "Routing"
+  },
+  {
+    "title": "FIM / Autocomplete Detection v1.6.14",
+    "href": "/model-prism/routing#fim-autocomplete-detection-v1614",
+    "text": "IDE autocomplete and Fill-in-the-Middle (FIM) requests are detected before any other routing step. These requests are latency-sensitive, produce short output, and require zero reasoning — they are routed to the low tier (coder-optimised models like qwen3-coder) without calling the LLM classifier. Detection uses two signal sources: System prompt / first user message patterns — keywords like \"hole filler\", \"fill in the middle\", \"FIM\", \"code completion\", \"autocomplete\", \"fill the hole\", \"inline com",
+    "page": "Routing"
+  },
+  {
+    "title": "Tool-Agent Detection v1.6.15",
+    "href": "/model-prism/routing#tool-agent-detection-v1615",
+    "text": "Requests from AI coding agents (Claude Code, OpenCode, Cursor, Windsurf) are detected by their system prompt. Since v1.8.5 , tool-agent detection produces a hint (confidence 0.55, below classifier threshold) rather than a final pre-route. This means the LLM classifier still runs for tool-agent requests, properly differentiating between simple tool calls ( tool_use , medium tier) and complex multi-step coding ( swe_agentic , high tier). The default \"Coding Agent / SWE\" system prompt role sets tie",
+    "page": "Routing"
+  },
+  {
+    "title": "Tier Cap v1.8.5",
+    "href": "/model-prism/routing#tier-cap-v185",
+    "text": "When a client explicitly requests a specific model but auto-routing is enabled via model=auto , the routing result is capped at the requested model's tier . If routing would select a more expensive tier, the original model is used instead. This prevents unexpected cost escalation. Exception v1.8.6 : the tier cap does not apply when forceAutoRoute is enabled on the tenant. In that case, the admin explicitly wants the router to pick the best model regardless of what the client requested. Client re",
+    "page": "Routing"
+  },
+  {
+    "title": "Override Rules",
+    "href": "/model-prism/routing#override-rules",
+    "text": "After signal extraction, a set of override rules adjusts the routing result. Overrides are applied in order; the first matching override wins (or they can stack — configurable). Override Condition Effect Vision Upgrade Images present, category doesn't require vision Upgrade tier by 1 Tool Call Upgrade v1.8.0 Request contains tool/function definitions Force minimum tier (configurable, default: medium ) Security Escalation Security keywords >= threshold Force code_security_review , high tier Domai",
+    "page": "Routing"
+  },
+  {
+    "title": "LLM Classifier",
+    "href": "/model-prism/routing#llm-classifier",
+    "text": "When pre-routing signals produce a confidence below the configured threshold (default: 0.65), the LLM classifier is called. It receives a structured summary of the request — not the full content — and returns a JSON routing decision.",
+    "page": "Routing"
+  },
+  {
+    "title": "What the classifier receives",
+    "href": "/model-prism/routing#what-the-classifier-receives",
+    "text": "[System] You are a precise model router. Classify the request into one of: - code_generation [low] — Examples: write function, implement class, ... - data_analysis [medium] — Examples: analyze dataset, find patterns, ... - reasoning_formal [high] — Examples: prove theorem, formal logic, ... ... (all 45 categories with tier and examples) Reply with ONLY valid JSON, no markdown: {\"category\":\"...\",\"confidence\":0-1,\"complexity\":\"simple|medium|complex\", \"has_image\":bool,\"language\":\"en|de|other\",\"esti",
+    "page": "Routing"
+  },
+  {
+    "title": "Classifier Context Limit Handling",
+    "href": "/model-prism/routing#classifier-context-limit-handling",
+    "text": "Different classifier models have vastly different context windows: Model Context window Recommended strategy gpt-4o-mini 128,000 tokens truncate claude-haiku-4-5 200,000 tokens truncate llama-3.1-8b 8,192 tokens metadata_only gemini-flash-2.0 1,000,000 tokens truncate phi-4 16,384 tokens summary Three strategies are supported: metadata_only — the classifier never sees message content, only extracted metadata. Safest for small-context models (< 16k tokens). Lowest classification quality for ambig",
+    "page": "Routing"
+  },
+  {
+    "title": "Smart Classifier Fallback v1.6.15",
+    "href": "/model-prism/routing#smart-classifier-fallback-v1615",
+    "text": "When all configured classifiers fail (rate limits, timeouts, network errors, invalid JSON response), the router no longer throws an error and falls back to the tenant's default model (which is often the most expensive). Instead, it selects a tier based on the request's token count: &le; 150 tokens → micro v1.7.0+ &le; 500 tokens → minimal &le; 2 000 tokens → low &le; 15 000 tokens → medium &le; 50 000 tokens → high > 50 000 tokens → ultra This prevents cost spikes when the classifier is temporar",
+    "page": "Routing"
+  },
+  {
+    "title": "Session Context-Fill Routing v1.6.17",
+    "href": "/model-prism/routing#session-context-fill-routing-v1617",
+    "text": "After each successful request, the gateway caches the context fill percentage ( inputTokens / contextWindow ) per session (30-minute TTL, in-memory). On the next request in the same session, if the previous fill was &ge; 75%, the router automatically steps up one tier so the request lands on a model with sufficient headroom before a context overflow occurs. Previous request: 150k tokens / 200k context = 75% fill Next request: low tier → medium tier (proactive upgrade) overrideApplied: session_co",
+    "page": "Routing"
+  },
+  {
+    "title": "Message Truncation as Last Resort v1.6.20",
+    "href": "/model-prism/routing#message-truncation-as-last-resort-v1620",
+    "text": "When context overflows and no larger model is available (session has grown to the platform limit), the gateway truncates old conversation turns rather than returning an error. Strategy: keep the system prompt and most recent turns, drop oldest turns until the payload fits within 85% of the context window, inject a synthetic system note so the model knows history was cut. This applies to both proactive pre-flight detection and reactive overflow paths.",
+    "page": "Routing"
+  },
+  {
+    "title": "Cost Mode & Tier Boost v1.7.5+",
+    "href": "/model-prism/routing#cost-mode-tier-boost-v175",
+    "text": "After all classification and override rules have been applied, two final adjustments can shift the resolved tier: Cost Mode — configured per rule set. Three options: Economy (−1 tier) — step down one tier to save cost Balanced — no adjustment (default) Quality (+1 tier) — step up one tier for better output quality Tier Boost — an explicit offset (−2 to +2) that stacks with cost mode. For example, quality (+1) combined with tier boost (+1) yields a total shift of +2 tiers. Configured per rule set",
+    "page": "Routing"
+  },
+  {
+    "title": "Test Route (Dry-Run) v1.8.0",
+    "href": "/model-prism/routing#test-route-dry-run-v180",
+    "text": "The Test Route tab in Routing Config lets you dry-run any prompt through the full routing pipeline and see a step-by-step trace of every decision point: Signal extraction (tokens, images, tool calls, domains, languages) FIM / tool-agent fast-path detection Rule-set pre-routing (which keyword rules and system prompt roles matched) Classifier decision (use or skip, and why) Classifier output (category, tier, confidence, recommended model, reasoning) Post-classifier tier enforcement (rule-set floor",
+    "page": "Routing"
+  },
+  {
+    "title": "Synthetic Tests AI v1.8.0",
+    "href": "/model-prism/routing#synthetic-tests-ai-v180",
+    "text": "Synthetic Tests let you automatically evaluate your routing configuration quality using AI-generated test suites: Create a test suite — name it and optionally scope to a specific category Generate test prompts — choose any available model to generate realistic prompts with expected categories and tiers Run the suite — execute all test prompts against the current routing config (pre-routing only, no LLM calls, no cost) AI Evaluate — choose any available model to analyze the results and get a rout",
+    "page": "Routing"
+  },
+  {
+    "title": "Routing Categories",
+    "href": "/model-prism/routing#routing-categories",
+    "text": "Open Model Prism ships with 45 built-in routing categories across eight cost tiers. Categories are stored in MongoDB and fully editable — add, remove, rename, or adjust defaults without code changes.",
+    "page": "Routing"
+  },
+  {
+    "title": "Minimal tier (simple, fast, cheap)",
+    "href": "/model-prism/routing#minimal-tier-simple-fast-cheap",
+    "text": "Key Description smalltalk_simple Greetings, casual conversation translation Language translation format_convert Convert between formats (Markdown → HTML, JSON → YAML, etc.) brainstorming Quick idea generation, simple lists proofreading Grammar and spelling correction summarization_short Short text summarisation (< 2 pages) coding_autocomplete v1.6.14 FIM / autocomplete — IDE inline completions (auto-detected, pre-routed)",
+    "page": "Routing"
+  },
+  {
+    "title": "Low tier (standard tasks)",
+    "href": "/model-prism/routing#low-tier-standard-tasks",
+    "text": "Key Description summarization_long Long document summarisation instruction_following Step-by-step task completion function_calling Tool use, function call generation qa_simple Simple factual Q&A classification_extraction Entity extraction, labelling creative_writing Stories, poems, marketing copy sentiment_analysis Tone and sentiment detection devops_infrastructure Infrastructure scripts, CI/CD, Docker, Kubernetes qa_testing Test case generation, QA scenarios",
+    "page": "Routing"
+  },
+  {
+    "title": "Medium tier (complex tasks)",
+    "href": "/model-prism/routing#medium-tier-complex-tasks",
+    "text": "Key Description code_generation Write code in any language code_review Review and critique code code_debugging Identify and fix bugs data_analysis Analyse datasets, find patterns api_integration API client code, integration logic long_context_processing Tasks requiring large context windows (> 15k tokens) stem_science Science, engineering, technical calculations question_answering_complex Multi-step reasoning Q&A customer_support Support ticket handling, escalation document_understanding PDF, co",
+    "page": "Routing"
+  },
+  {
+    "title": "High tier (hardest tasks)",
+    "href": "/model-prism/routing#high-tier-hardest-tasks",
+    "text": "Key Description reasoning_formal Mathematical proofs, formal logic code_security_review Security audit, vulnerability analysis swe_agentic Agentic software engineering, multi-step coding legal_analysis Legal document analysis, compliance medical_analysis Clinical/medical content (escalated by domain gate) system_design Architecture, high-level design docs multimodal_analysis Image + text combined analysis",
+    "page": "Routing"
+  },
+  {
+    "title": "Preset Profiles",
+    "href": "/model-prism/routing#preset-profiles",
+    "text": "Preset profiles are named bundles of routing categories. When applied, they automatically assign the best available model (ranked by benchmark score for the category's primary capability axis) to each category in the bundle. The assignment is non-destructive : categories that already have a defaultModel configured are skipped. Profile Category focus software_development Code generation, debugging, refactoring, security review, DevOps customer_support FAQ, sentiment analysis, summarisation, instr",
+    "page": "Routing"
+  },
+  {
+    "title": "Model Selection",
+    "href": "/model-prism/routing#model-selection",
+    "text": "Once a category and tier are determined, the model is selected as follows: Category defaultModel — if set, use it directly (highest priority) Benchmark-weighted price-performance — within the target tier, all eligible models are scored using a weighted benchmark formula that considers the category's primary capability axes, combined with cost (see below) Tenant routing defaultModel — fallback if no category default and no benchmark data Context window check — if the selected model's context wind",
+    "page": "Routing"
+  },
+  {
+    "title": "Benchmark-Weighted Routing",
+    "href": "/model-prism/routing#benchmark-weighted-routing",
+    "text": "Instead of simply picking the cheapest model in a tier, Model Prism calculates a price-performance score for each eligible model. The score combines benchmark quality with cost: quality = (w_intelligence * intelligence) + (w_coding * coding) + (w_math * math) + (w_speed * speed) cost = inputPer1M + outputPer1M score = quality / cost^exponent The benchmark weights are determined by the routing category: Category type Intelligence Coding Math Speed code_* 0.15 0.55 0.20 0.10 reasoning_* , math 0.2",
+    "page": "Routing"
+  },
+  {
+    "title": "Cost Mode",
+    "href": "/model-prism/routing#cost-mode",
+    "text": "The cost mode setting controls the balance between output quality and cost savings. It affects both tier shifting (moving requests up or down a tier) and model ranking within a tier (how aggressively cost is penalized in the price-performance formula). Mode Cost exponent Tier shift Effect economy 2.0 Step down one tier Maximize savings — heavily penalizes expensive models, prefers cheapest options balanced 1.0 No shift (default) Best price-performance ratio — equal weighting of quality and cost ",
+    "page": "Routing"
+  },
+  {
+    "title": "Budget Guard Integration",
+    "href": "/model-prism/routing#budget-guard-integration",
+    "text": "The budget guard can automatically override the cost mode when spend approaches a configured threshold. When the guard activates: Auto-routed requests — the cost mode is overridden to economy , which steps down one tier and heavily penalizes expensive models within the remaining tier. Results stay reasonable because the best cheap models are selected by benchmark score. Explicit model requests — requests targeting a blocked tier (e.g. high ) are still rejected with a 429 error. This means auto-r",
+    "page": "Routing"
+  },
+  {
+    "title": "Response Enrichment",
+    "href": "/model-prism/routing#response-enrichment",
+    "text": "Every auto-routed response includes routing metadata in the response body: { \"choices\": [...], \"auto_routing\": { \"category\": \"code_security_review\", \"confidence\": 0.91, \"complexity\": \"complex\", \"cost_tier\": \"high\", \"model_id\": \"claude-opus-4-6\", \"override_applied\": \"security_escalation\", \"analysis_time_ms\": 312, \"domain\": \"tech\", \"reasoning\": \"Request contains 3 security-related keyword patterns and 82k token codebase\" }, \"cost_info\": { \"actual_cost\": 0.0187, \"baseline_cost\": 0.0210, \"saved\": 0.",
+    "page": "Routing"
+  },
+  {
+    "title": "Provider Fallback Chains v1.6.9+",
+    "href": "/model-prism/routing#provider-fallback-chains-v169",
+    "text": "When a provider returns an error, Model Prism can automatically fail over to an alternative provider using fallback chains .",
+    "page": "Routing"
+  },
+  {
+    "title": "Circuit Breaker",
+    "href": "/model-prism/routing#circuit-breaker",
+    "text": "Each provider is monitored with a circuit breaker that transitions through three states: CLOSED normal operation — all requests forwarded ↓ error threshold exceeded OPEN provider marked down — requests skip to next in chain ↓ cooldown period elapsed HALF_OPEN probe requests sent — if successful, return to CLOSED",
+    "page": "Routing"
+  },
+  {
+    "title": "Per-Tenant Configuration",
+    "href": "/model-prism/routing#per-tenant-configuration",
+    "text": "Fallback chains are configurable per tenant, per model pattern or using a wildcard '*' to match all models. When a provider error occurs, the gateway automatically retries with the next provider in the chain.",
+    "page": "Routing"
+  },
+  {
+    "title": "Context-Aware Fallback",
+    "href": "/model-prism/routing#context-aware-fallback",
+    "text": "On context overflow errors, the fallback system automatically upgrades to a larger context model. The pre-flight context check uses the model registry as a fallback source for context window data when provider metadata is unavailable.",
+    "page": "Routing"
+  },
+  {
+    "title": "Webhook Notifications",
+    "href": "/model-prism/routing#webhook-notifications",
+    "text": "When a provider transitions to OPEN (down), a provider_down webhook event is fired to notify administrators.",
+    "page": "Routing"
+  },
+  {
+    "title": "A/B Testing for Routing v1.6.9+",
+    "href": "/model-prism/routing#ab-testing-for-routing-v169",
+    "text": "Model Prism supports A/B testing experiments to compare routing strategies or model variants under real production traffic.",
+    "page": "Routing"
+  },
+  {
+    "title": "Experiment Model",
+    "href": "/model-prism/routing#experiment-model",
+    "text": "Each experiment defines weighted variants. Traffic is distributed across variants using consistent session-based hashing (SHA-256) so that the same session always hits the same variant.",
+    "page": "Routing"
+  },
+  {
+    "title": "Per-Variant Metrics",
+    "href": "/model-prism/routing#per-variant-metrics",
+    "text": "Each variant tracks: Requests — total request count Tokens — input and output token totals Cost — actual cost per variant Errors — error count and rate Quality — automated quality score (see below)",
+    "page": "Routing"
+  },
+  {
+    "title": "Statistical Analysis",
+    "href": "/model-prism/routing#statistical-analysis",
+    "text": "Experiments use a z-test for statistical significance analysis, allowing you to determine when a variant is performing reliably better or worse than the control.",
+    "page": "Routing"
+  },
+  {
+    "title": "Admin API",
+    "href": "/model-prism/routing#admin-api",
+    "text": "Experiments are managed via /api/prism/admin/experiments/ .",
+    "page": "Routing"
+  },
+  {
+    "title": "Automated Quality Scoring v1.6.9+",
+    "href": "/model-prism/routing#automated-quality-scoring-v169",
+    "text": "Every request receives an automated quality score from 0 to 100, computed from six signals: Signal Max Points Description Completeness 25 Whether the response fully addresses the prompt Length adequacy 20 Response length appropriate for the task complexity Refusal detection 20 Penalizes unnecessary refusals or safety over-triggers Error indicators 15 Detects error patterns, apologies, or failure admissions Language consistency 10 Response language matches the request language Format compliance 1",
+    "page": "Routing"
+  },
+  {
+    "title": "Tenant Management",
+    "href": "/model-prism/tenants#tenant-management",
+    "text": "A tenant represents an isolated gateway endpoint. Each team, project, or application gets its own tenant with a unique URL, API key, and configuration.",
+    "page": "Tenants"
+  },
+  {
+    "title": "Tenant Configuration",
+    "href": "/model-prism/tenants#tenant-configuration",
+    "text": "Field Description name Display name slug URL segment — determines the gateway endpoint: /api/<slug>/v1 providerIds Assigned providers (models from these providers are accessible) routing Auto-routing config: classifier provider, model, overrides modelConfig Model access control: mode + list modelAliases Map of alias → real model ID rateLimit Requests and tokens per minute (0 = unlimited, enterprise feature) keyEnabled Whether the API key accepts requests keyLifetimeDays 7 / 14 / 30 / 60 / 90 / 3",
+    "page": "Tenants"
+  },
+  {
+    "title": "Generation",
+    "href": "/model-prism/tenants#generation",
+    "text": "API keys are generated as omp-<64 hex chars> . The key is shown once at creation time. The stored value is SHA-256(key) — the plaintext is never persisted.",
+    "page": "Tenants"
+  },
+  {
+    "title": "Rotation",
+    "href": "/model-prism/tenants#rotation",
+    "text": "Clicking Rotate Key on a tenant immediately invalidates the old key and generates a new one. The new key is shown once and must be copied before closing the modal.",
+    "page": "Tenants"
+  },
+  {
+    "title": "Custom Keys",
+    "href": "/model-prism/tenants#custom-keys",
+    "text": "Opt-in: enter a custom key (minimum 16 characters). The custom key is stored encrypted (AES-256-GCM) and validated at request time the same way as generated keys.",
+    "page": "Tenants"
+  },
+  {
+    "title": "Lifetime & Expiry",
+    "href": "/model-prism/tenants#lifetime-expiry",
+    "text": "Keys can be configured with an expiry period. On creation or rotation, keyExpiresAt = now + keyLifetimeDays x 86400s . At the gateway, every request checks: keyEnabled === false -> 401 { error: \"api_key_disabled\" } keyExpiresAt < now -> 401 { error: \"api_key_expired\" } Keys with no expiry ( keyLifetimeDays = 0 ) never expire.",
+    "page": "Tenants"
+  },
+  {
+    "title": "Enable / Disable",
+    "href": "/model-prism/tenants#enable-disable",
+    "text": "A key can be disabled without deleting it. The UI shows a warning modal before disabling — any active clients using the key will immediately start receiving 401 errors.",
+    "page": "Tenants"
+  },
+  {
+    "title": "Generate Config v1.6.7+",
+    "href": "/model-prism/tenants#generate-config-v167",
+    "text": "The Generate Config modal provides ready-to-paste configuration snippets for connecting popular tools and SDKs to a tenant's gateway endpoint. Model checkboxes let you select which models to include in the generated config — model-prism (auto-routing) is always included and cannot be unchecked Default model selector — choose which model is set as the default in the generated configuration Supported formats: Continue , OpenCode , Cursor , Python SDK , Node.js SDK Available on both the admin Tenan",
+    "page": "Tenants"
+  },
+  {
+    "title": "Custom API Key Minimum v1.6.13+",
+    "href": "/model-prism/tenants#custom-api-key-minimum-v1613",
+    "text": "Custom API keys now have a minimum length of 1 character (previously 6). This allows short keys like test , dev , etc. for development and testing environments.",
+    "page": "Tenants"
+  },
+  {
+    "title": "Multi-API-Key Support v1.6.9+",
+    "href": "/model-prism/tenants#multi-api-key-support-v169",
+    "text": "In addition to the primary API key, tenants can have multiple API keys . Each additional key has its own label, enabled/disabled state, optional expiry, and lastUsedAt tracking.",
+    "page": "Tenants"
+  },
+  {
+    "title": "Admin Endpoints",
+    "href": "/model-prism/tenants#admin-endpoints",
+    "text": "Method Endpoint Description GET /:id/keys List all API keys for a tenant POST /:id/keys Generate a new API key POST /:id/keys/custom Create a key with a custom value PATCH /:id/keys/:keyId Update key label, enabled state, or expiry DELETE /:id/keys/:keyId Revoke and delete a key",
+    "page": "Tenants"
+  },
+  {
+    "title": "UI",
+    "href": "/model-prism/tenants#ui",
+    "text": "The Tenants page includes a \"Manage API keys\" drawer where admins can view, create, enable/disable, and revoke additional keys per tenant.",
+    "page": "Tenants"
+  },
+  {
+    "title": "Gateway Authentication",
+    "href": "/model-prism/tenants#gateway-authentication",
+    "text": "The gateway authenticates incoming requests against both the legacy single-key field and the multi-key array. A request is authorized if the provided key matches any enabled, non-expired key on the tenant.",
+    "page": "Tenants"
+  },
+  {
+    "title": "Rate Limits & Quotas Enterprise",
+    "href": "/model-prism/tenants#rate-limits-quotas-enterprise",
+    "text": "Rate limits, usage quotas, budget limits, and budget guard are enterprise-only features . In the Community Edition, all tenants have unlimited rate limits and no quotas. With an enterprise license, the tenant edit modal shows a \"Limits & Quotas\" tab for configuring these settings via the admin UI.",
+    "page": "Tenants"
+  },
+  {
+    "title": "Rate Limits",
+    "href": "/model-prism/tenants#rate-limits",
+    "text": "Per-tenant rate limiting uses a sliding-window counter (in-memory, per pod). Two limits are configurable: Requests per minute — 0 = unlimited (default) Tokens per minute — 0 = unlimited (default) When a limit is exceeded, the gateway returns a 429 error with type rate_limit_error .",
+    "page": "Tenants"
+  },
+  {
+    "title": "Usage Quotas v1.6.9+",
+    "href": "/model-prism/tenants#usage-quotas-v169",
+    "text": "Tenants can be assigned token, request, and cost quotas to control usage within a billing period. Since v1.6.21 , quotas can be managed directly in the admin UI via the \"Limits & Quotas\" tab on each tenant.",
+    "page": "Tenants"
+  },
+  {
+    "title": "Enforcement Modes",
+    "href": "/model-prism/tenants#enforcement-modes",
+    "text": "Mode Behavior hard_block Requests are rejected with a 429 error once the quota is exceeded soft_warning Requests continue but a warning header is added and a webhook is fired auto_economy Routing cost mode is automatically downgraded to economy when quota is near exhaustion",
+    "page": "Tenants"
+  },
+  {
+    "title": "Period Reset",
+    "href": "/model-prism/tenants#period-reset",
+    "text": "Quotas support automatic calendar-based period resets (daily or monthly). Usage counters are reset at the start of each period.",
+    "page": "Tenants"
+  },
+  {
+    "title": "Admin API",
+    "href": "/model-prism/tenants#admin-api",
+    "text": "Quota configuration and usage data are managed via /api/prism/admin/quotas/ .",
+    "page": "Tenants"
+  },
+  {
+    "title": "Strip Thinking v1.6.13+",
+    "href": "/model-prism/tenants#strip-thinking-v1613",
+    "text": "Each tenant has a stripThinking setting (default: true ) that filters extended thinking and reasoning content from Claude and other models before returning responses to the client. The filter handles multiple thinking formats: reasoning_content fields in the response Messages with role: \"thinking\" <thinking> XML tags in content Content blocks with type: \"thinking\"",
+    "page": "Tenants"
+  },
+  {
+    "title": "Model Access Control",
+    "href": "/model-prism/tenants#model-access-control",
+    "text": "Each tenant can restrict which models are accessible via the gateway using three modes:",
+    "page": "Tenants"
+  },
+  {
+    "title": "all (default)",
+    "href": "/model-prism/tenants#all-default",
+    "text": "All models from assigned providers are available. No filtering applied.",
+    "page": "Tenants"
+  },
+  {
+    "title": "whitelist",
+    "href": "/model-prism/tenants#whitelist",
+    "text": "Only models explicitly listed are accessible. Requests to any other model return an error. list: [\"gpt-4o\", \"gpt-4o-mini\", \"claude-sonnet-4-6\"] -> Only these 3 models work for this tenant",
+    "page": "Tenants"
+  },
+  {
+    "title": "blacklist",
+    "href": "/model-prism/tenants#blacklist",
+    "text": "All models are accessible except those explicitly listed. list: [\"claude-opus-4-6\", \"o3\"] -> These expensive models are blocked; everything else works The model access config can be set by: Admin / maintainer : via the Tenants page → Models tab tenant-admin : via the My Tenant page → Model Access tab (self-service)",
+    "page": "Tenants"
+  },
+  {
+    "title": "Multi-Provider Tenants v1.10.5",
+    "href": "/model-prism/tenants#multi-provider-tenants-v1105",
+    "text": "A single tenant can connect to multiple providers (e.g. AWS Bedrock + Azure OpenAI + Ollama). When multiple providers offer the same model ID, the first provider in the tenant's provider list is used by default.",
+    "page": "Tenants"
+  },
+  {
+    "title": "Duplicate Model Detection",
+    "href": "/model-prism/tenants#duplicate-model-detection",
+    "text": "When adding providers to a tenant, Model Prism automatically detects overlapping model IDs and shows a warning. For example, if both \"AWS Account EU\" and \"AWS Account US\" have eu.anthropic.claude-opus-4-6-v1 , the admin is notified.",
+    "page": "Tenants"
+  },
+  {
+    "title": "Explicit Provider Selection",
+    "href": "/model-prism/tenants#explicit-provider-selection",
+    "text": "To target a specific provider, prefix the model ID with the provider's slug: POST /api/my-tenant/v1/chat/completions { \"model\": \"aws-eu/eu.anthropic.claude-opus-4-6-v1\" } // Without prefix → first provider with this model wins // With prefix → routes to the provider with slug \"aws-eu\" Provider slugs are auto-prefixed: aws- for Bedrock, az- for Azure.",
+    "page": "Tenants"
+  },
+  {
+    "title": "Model Aliases",
+    "href": "/model-prism/tenants#model-aliases",
+    "text": "Tenants can define aliases that map client-facing model names to actual provider model IDs: { \"gpt-4\": \"gpt-4o\", \"fast\": \"gpt-4o-mini\", \"smart\": \"claude-opus-4-6\" } Clients using the tenant endpoint can reference model: \"smart\" and the request is transparently forwarded to claude-opus-4-6 .",
+    "page": "Tenants"
+  },
+  {
+    "title": "Routing Configuration",
+    "href": "/model-prism/tenants#routing-configuration",
+    "text": "Each tenant has its own routing configuration: { \"classifierProvider\": \"<provider-id>\", \"classifierModel\": \"gpt-4o-mini\", \"defaultModel\": \"gpt-4o\", \"forceAutoRoute\": false, \"overrides\": { \"visionUpgrade\": true, \"confidenceFallback\": true, \"confidenceThreshold\": 0.65, \"domainGate\": true, \"conversationTurnUpgrade\": true, \"frustrationUpgrade\": true, \"outputLengthUpgrade\": true } } See Routing for full details on how routing works.",
+    "page": "Tenants"
+  },
+  {
+    "title": "Tenant-Admin Self-Service",
+    "href": "/model-prism/tenants#tenant-admin-self-service",
+    "text": "Users with the tenant-admin role can manage their assigned tenants without admin access:",
+    "page": "Tenants"
+  },
+  {
+    "title": "My Tenant page",
+    "href": "/model-prism/tenants#my-tenant-page",
+    "text": "Model Access tab — switch between all/whitelist/blacklist, select models via checkboxes grouped by provider Generate Config tab — generate ready-to-paste configs for Continue, OpenCode, Cursor, Claude Code, Open WebUI, Python SDK, Node.js SDK",
+    "page": "Tenants"
+  },
+  {
+    "title": "Tenant Portal API",
+    "href": "/model-prism/tenants#tenant-portal-api",
+    "text": "Method Endpoint Description GET /api/prism/tenant-portal/mine List own tenants GET /api/prism/tenant-portal/:id Get tenant config (no API key hash) PUT /api/prism/tenant-portal/:id/model-config Update model access mode and list GET /api/prism/tenant-portal/:id/models List accessible models (respects model access config) Admins and maintainers also have access to these endpoints and see all tenants via /mine .",
+    "page": "Tenants"
+  },
+  {
+    "title": "Generate Config",
+    "href": "/model-prism/tenants#generate-config",
+    "text": "The Generate Config button (code icon) per tenant opens a modal with configuration snippets for popular tools. The endpoint URL and API key placeholder are pre-filled; the user just needs to substitute their actual key. Tool Config format Location Continue YAML schema v1 ~/.continue/config.yaml OpenCode JSON with $schema ~/.config/opencode/config.json Cursor Manual settings Settings → Models → OpenAI Claude Code Shell env var ~/.bashrc / .env Open WebUI Docker env docker-compose.yml Python SDK C",
+    "page": "Tenants"
+  }
+]

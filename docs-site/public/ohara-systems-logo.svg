@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none" aria-label="ohara.systems">
+  <defs>
+    <linearGradient id="os-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%"   stop-color="#38bdf8"/>
+      <stop offset="50%"  stop-color="#818cf8"/>
+      <stop offset="100%" stop-color="#e879f9"/>
+    </linearGradient>
+    <linearGradient id="os-grad-r" x1="100%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%"   stop-color="#38bdf8"/>
+      <stop offset="100%" stop-color="#818cf8"/>
+    </linearGradient>
+    <filter id="os-glow" x="-150%" y="-150%" width="400%" height="400%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="2" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="os-glow-sm" x="-150%" y="-150%" width="400%" height="400%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="1.2" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- Outer orbital ring -->
+  <circle cx="24" cy="24" r="18"
+    stroke="url(#os-grad)"
+    stroke-width="1.5"
+    opacity="0.55"
+  />
+
+  <!-- Inner ring -->
+  <circle cx="24" cy="24" r="9"
+    stroke="url(#os-grad)"
+    stroke-width="1"
+    opacity="0.2"
+  />
+
+  <!-- Spokes: center → 4 orbital nodes -->
+  <g stroke="url(#os-grad)" stroke-width="1" stroke-linecap="round" opacity="0.3">
+    <line x1="24" y1="24" x2="24" y2="6"/>
+    <line x1="24" y1="24" x2="42" y2="24"/>
+    <line x1="24" y1="24" x2="24" y2="42"/>
+    <line x1="24" y1="24" x2="6"  y2="24"/>
+  </g>
+
+  <!-- Diagonal cross (secondary structure, very faint) -->
+  <g stroke="url(#os-grad)" stroke-width="0.75" stroke-linecap="round" opacity="0.15">
+    <line x1="24" y1="24" x2="36.7" y2="11.3"/>
+    <line x1="24" y1="24" x2="36.7" y2="36.7"/>
+    <line x1="24" y1="24" x2="11.3" y2="36.7"/>
+    <line x1="24" y1="24" x2="11.3" y2="11.3"/>
+  </g>
+
+  <!-- 4 orbital product nodes -->
+  <!-- Top: cyan (Model Prism) -->
+  <circle cx="24" cy="6"  r="2.8" fill="#38bdf8" opacity="0.10"/>
+  <circle cx="24" cy="6"  r="2"   fill="#38bdf8" opacity="0.85" filter="url(#os-glow-sm)"/>
+  <circle cx="24" cy="6"  r="0.9" fill="white"   opacity="0.95"/>
+
+  <!-- Right: violet (Agent Atlas) -->
+  <circle cx="42" cy="24" r="2.8" fill="#818cf8" opacity="0.10"/>
+  <circle cx="42" cy="24" r="2"   fill="#818cf8" opacity="0.85" filter="url(#os-glow-sm)"/>
+  <circle cx="42" cy="24" r="0.9" fill="white"   opacity="0.95"/>
+
+  <!-- Bottom: magenta (Agent Forge / Prompt Flux) -->
+  <circle cx="24" cy="42" r="2.8" fill="#e879f9" opacity="0.10"/>
+  <circle cx="24" cy="42" r="2"   fill="#e879f9" opacity="0.85" filter="url(#os-glow-sm)"/>
+  <circle cx="24" cy="42" r="0.9" fill="white"   opacity="0.95"/>
+
+  <!-- Left: blue-violet (Prompt Flux) -->
+  <circle cx="6"  cy="24" r="2.8" fill="#818cf8" opacity="0.10"/>
+  <circle cx="6"  cy="24" r="2"   fill="#818cf8" opacity="0.75" filter="url(#os-glow-sm)"/>
+  <circle cx="6"  cy="24" r="0.9" fill="white"   opacity="0.95"/>
+
+  <!-- Central hub: ohara core -->
+  <circle cx="24" cy="24" r="7"   fill="#38bdf8" opacity="0.07"/>
+  <circle cx="24" cy="24" r="4.5" fill="#818cf8" opacity="0.12"/>
+  <circle cx="24" cy="24" r="3.5" fill="#818cf8" opacity="0.85" filter="url(#os-glow)"/>
+  <circle cx="24" cy="24" r="1.6" fill="white"   opacity="0.97"/>
+</svg>

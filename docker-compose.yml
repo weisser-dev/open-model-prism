@@ -1,0 +1,53 @@
+# Open Model Prism — Docker Compose
+#
+# Single-pod (default):  docker compose up
+# Scaled deployment:     docker compose -f docker-compose.yml -f docker-compose.scaled.yml up --scale worker=3
+#
+# In single-pod mode MongoDB runs standalone (no replica set).
+# Cross-pod cache invalidation falls back to 15s polling automatically.
+# The replica set (rs0) is only needed for Change Streams in multi-pod deployments
+# and is configured in docker-compose.scaled.yml.
+
+services:
+
+  app:
+    image: ghcr.io/ai-ohara-systems/model-prism:latest
+    # build: .   # uncomment to build from source instead of using the published image
+    container_name: open-model-prism
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - MONGO_URI=mongodb://mongodb:27017/openmodelprism
+      - JWT_SECRET=${JWT_SECRET:-change-me-in-production-jwt-secret}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY:-change-me-32-chars-encryption-k!}
+      - NODE_ENV=production
+      - PORT=3000
+      - LOG_LEVEL=info
+      - NODE_ROLE=full
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  mongodb:
+    image: mongo:7
+    container_name: open-model-prism-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  mongodb_data:
+    driver: local

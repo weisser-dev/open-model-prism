@@ -1,0 +1,59 @@
+---
+import Base from '../layouts/Base.astro';
+---
+
+<Base title="Open Model Prism — Documentation" description="Technical documentation for Open Model Prism, the open-source multi-tenant LLM gateway." lang="en">
+  <div class="mx-auto max-w-5xl px-6 py-24">
+
+    <!-- Hero -->
+    <div class="text-center mb-20">
+      <div class="flex justify-center mb-6">
+        <div class="w-16 h-16 rounded-2xl bg-[#38bdf8]/10 border border-[#38bdf8]/20 flex items-center justify-center">
+          <img src="/model-prism-logo.svg" width="32" height="32" alt="Open Model Prism" class="h-8 w-8" />
+        </div>
+      </div>
+      <h1 class="text-4xl md:text-5xl font-bold text-white mb-4">Open Model Prism</h1>
+      <p class="text-lg text-white/50 max-w-2xl mx-auto">
+        Open-source multi-tenant LLM gateway with intelligent routing, cost tracking, and self-optimizing model selection.
+      </p>
+      <div class="flex items-center justify-center gap-4 mt-8">
+        <a href="/model-prism/getting-started"
+          class="inline-flex items-center gap-2 bg-[#38bdf8] text-[#0a0a0f] font-semibold px-6 py-3 rounded-xl hover:bg-[#7dd3fc] transition-colors duration-200">
+          Get Started
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </a>
+        <a href="/model-prism/api-reference"
+          class="inline-flex items-center gap-2 border border-white/20 text-white/80 px-6 py-3 rounded-xl hover:border-white/40 hover:text-white transition-all duration-200">
+          API Reference
+        </a>
+      </div>
+    </div>
+
+    <!-- Quick navigation grid -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {[
+        { href: '/model-prism/getting-started', title: 'Getting Started', desc: 'Docker Compose, Kubernetes, and environment configuration.' },
+        { href: '/model-prism/architecture',    title: 'Architecture',    desc: 'Request flow, components, and deployment topology.' },
+        { href: '/model-prism/routing',         title: 'Routing',         desc: 'Cost tiers, LLM classifier, override rules, and categories.' },
+        { href: '/model-prism/providers',       title: 'Providers',       desc: 'Connect OpenAI, Anthropic, Bedrock, Azure, Ollama, and more.' },
+        { href: '/model-prism/tenants',         title: 'Tenants',         desc: 'Multi-tenant isolation, API keys, and model access control.' },
+        { href: '/model-prism/analytics',       title: 'Analytics',       desc: 'Cost tracking, dashboards, Prometheus metrics, and webhooks.' },
+        { href: '/model-prism/resilience',      title: 'Resilience',      desc: 'Fallback chains, circuit breaker, and context overflow handling.' },
+        { href: '/model-prism/operations',      title: 'Operations',      desc: 'Production deployment, scaling, backup, and upgrades.' },
+        { href: '/model-prism/rbac',            title: 'RBAC & Roles',    desc: 'Role-based access control, LDAP/SSO, and audit trail.' },
+        { href: '/model-prism/api-reference',   title: 'API Reference',   desc: 'All gateway and admin API endpoints with examples.' },
+        { href: '/model-prism/prompt-analyses', title: 'Prompt Analyses', desc: 'Automated prompt quality scoring and the Blame Game dashboard.' },
+        { href: '/model-prism/prompt-optimizer',title: 'Prompt Optimizer',desc: 'Integrate Prompt Flux for automatic prompt compression.' },
+      ].map(card => (
+        <a href={card.href}
+          class="group relative overflow-hidden rounded-xl border border-white/10 bg-[#0d0d14] p-6 hover:border-[#38bdf8]/30 transition-all duration-300">
+          <div class="absolute inset-0 bg-gradient-to-br from-[#38bdf8]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+          <div class="relative">
+            <h2 class="text-base font-semibold text-white group-hover:text-[#38bdf8] transition-colors mb-2">{card.title}</h2>
+            <p class="text-sm text-white/40 leading-relaxed">{card.desc}</p>
+          </div>
+        </a>
+      ))}
+    </div>
+  </div>
+</Base>

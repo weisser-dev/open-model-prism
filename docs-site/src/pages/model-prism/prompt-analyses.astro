@@ -1,0 +1,108 @@
+---
+import DocsPage from '../../layouts/DocsPage.astro';
+---
+
+<DocsPage title="Prompt Analyses — Model Prism" description="Anonymized prompt quality scoring across five dimensions. Helps teams understand prompt patterns and reduce token waste.">
+
+  <h1 class="text-3xl font-bold text-white mb-6">Prompt Analyses 🥚</h1>
+  <p class="text-white/55 leading-relaxed mb-4">
+    Prompt Analyses is an opt-in feature that evaluates the quality of real prompts flowing through Model Prism — anonymized, scored across five dimensions, and surfaced in a public-facing dashboard. Better prompts mean smaller context windows, smarter routing, and lower costs.
+  </p>
+
+  <div class="rounded-xl border border-teal-500/20 bg-teal-500/5 p-4 mb-8">
+    <p class="text-teal-300 text-sm font-medium mb-2">Easter Egg</p>
+    <p class="text-white/50 text-sm">
+      The Prompt Analyses dashboard lives at <code class="text-teal-300">/prompt-engineer-pros</code> (admin) and <code class="text-teal-300">/public-prompt-engineer-pros</code> (public). The 🥚 badge is intentional — a little nod to how this feature snuck into the product.
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Enabling Prompt Analyses</h2>
+  <ol class="list-decimal list-inside text-white/55 mb-4 space-y-2">
+    <li>Go to <strong class="text-white/80">Admin UI → Settings → Prompt Analyses</strong></li>
+    <li>Toggle <strong class="text-white/80">Enable Prompt Analyses</strong></li>
+    <li>Select the <strong class="text-white/80">Provider</strong> and <strong class="text-white/80">Model</strong> to use for scoring (any configured provider works)</li>
+    <li>Optionally set <strong class="text-white/80">Max Prompts</strong> (0 = all), <strong class="text-white/80">Ignored Categories</strong>, and enable the <strong class="text-white/80">Public Endpoint</strong></li>
+    <li>Click <strong class="text-white/80">Run Analysis</strong> — results appear within seconds to minutes depending on volume</li>
+  </ol>
+
+  <h3 class="text-lg font-semibold text-white mt-6 mb-3">Settings Reference</h3>
+  <div class="overflow-x-auto mb-6">
+    <table class="w-full border-collapse">
+      <thead>
+        <tr>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Setting</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        {[
+          ['Provider', 'Which configured provider to use for scoring LLM calls'],
+          ['Model', 'Which model on that provider to use (a mid-tier model is usually sufficient)'],
+          ['Max Prompts', 'Cap on how many prompts to analyze per run. 0 = no limit.'],
+          ['Ignored Categories', 'Routing categories to skip (e.g. "embedding", "code-autocomplete")'],
+          ['Public Endpoint', 'Exposes anonymized results at /public-prompt-engineer-pros — no auth required'],
+        ].map(([key, desc]) => (
+          <tr>
+            <td class="border-t border-white/10 px-4 py-2 text-white/70 text-sm font-medium">{key}</td>
+            <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">{desc}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Scoring Dimensions</h2>
+  <p class="text-white/55 leading-relaxed mb-4">
+    Each prompt is scored by an LLM across five dimensions (0–100 per dimension). The overall score is the unweighted average — lower means more room to improve.
+  </p>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+    {[
+      { label: 'Specificity', desc: 'How specific and actionable the request is.', bad: '"write tests for my code"', good: '"Jest unit tests for UserService.create()"' },
+      { label: 'Context', desc: 'Does it include relevant background — code, stack trace, error message, or file path?', bad: '"fix the bug"', good: '"Fix NullPointerException in Auth.java:42"' },
+      { label: 'Output Definition', desc: 'Is the expected output format, scope, or success criteria stated?', bad: '"improve this"', good: '"Refactor for readability, keep public API"' },
+      { label: 'Model Fit', desc: 'Is the task complexity appropriate for the routed model tier?', bad: 'Simple autocomplete → ultra-tier model', good: 'Architecture review → advanced tier' },
+      { label: 'Token Efficiency', desc: 'Is context proportionate to the task? Are sessions focused?', bad: '50-turn session for one simple question', good: 'New topic = new session, only relevant context' },
+    ].map(d => (
+      <div class="rounded-xl border border-white/10 bg-[#0d0d14] p-4">
+        <p class="text-white/80 font-medium text-sm mb-1">{d.label}</p>
+        <p class="text-white/50 text-sm mb-3">{d.desc}</p>
+        <div class="space-y-1">
+          <p class="text-xs text-red-400/60">✗ {d.bad}</p>
+          <p class="text-xs text-green-400/60">✓ {d.good}</p>
+        </div>
+      </div>
+    ))}
+  </div>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Public Dashboard</h2>
+  <p class="text-white/55 leading-relaxed mb-4">
+    When <strong class="text-white/80">Public Endpoint</strong> is enabled, the results are available at <code class="text-teal-300">/public-prompt-engineer-pros</code> with no authentication. The page shows:
+  </p>
+  <ul class="list-disc ml-6 text-white/55 space-y-1 mb-4">
+    <li>Average score with color coding (red/orange/yellow/green)</li>
+    <li>Count of Critical (&lt;40), Mediocre (40–69), and Good (≥70) prompts</li>
+    <li>Last run timestamp and scoring model</li>
+    <li>Floating prompt tags across the page — each showing the score and first 30 characters of the prompt</li>
+    <li>Collapsible scoring methodology explanation</li>
+  </ul>
+  <p class="text-white/55 leading-relaxed mb-4">
+    <strong class="text-white/80">Privacy:</strong> Only the first 30 characters of each prompt are exposed publicly (as <code class="text-teal-300">promptHint</code>). Full prompt content, tenant info, and request IDs are never included in the public response.
+  </p>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Admin Dashboard</h2>
+  <p class="text-white/55 leading-relaxed mb-4">
+    The admin view at <code class="text-teal-300">/prompt-engineer-pros</code> shows the full analysis including prompt excerpts (up to 200 chars), per-dimension scores, issues, and improvement suggestions for each prompt. Access requires admin or maintainer role.
+  </p>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">API</h2>
+  <pre class="bg-[#0d0d14] border border-white/10 rounded-lg p-4 text-sm text-white/70 mb-4 overflow-x-auto"># Trigger an analysis run (admin)
+POST /api/prism/admin/prompt-engineer/run
+
+# Get latest results (admin)
+GET /api/prism/admin/prompt-engineer/results
+
+# Get anonymized public results (no auth, requires publicEndpoint enabled)
+GET /api/prism/public/prompt-engineer-pros</pre>
+
+</DocsPage>

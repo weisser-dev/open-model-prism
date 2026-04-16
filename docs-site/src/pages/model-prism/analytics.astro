@@ -1,0 +1,306 @@
+---
+import DocsPage from '../../layouts/DocsPage.astro';
+---
+
+<DocsPage title="Analytics & Cost Tracking — Model Prism" description="Request analytics, cost calculation, daily aggregates, dashboard KPIs, charts, request log, and Prometheus metrics in Open Model Prism.">
+
+  <h1 class="text-3xl font-bold text-white mb-6">Analytics & Cost Tracking</h1>
+  <p class="text-white/55 leading-relaxed mb-4">Open Model Prism tracks every gateway request and aggregates statistics at multiple levels: per-tenant, per-model, per-user, and per-day. All analytics are written asynchronously (fire-and-forget) so they never add latency to the gateway response.</p>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Metrics Tracked Per Request</h2>
+  <div class="overflow-x-auto mb-6">
+    <table class="w-full border-collapse">
+      <thead>
+        <tr>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Field</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        {[
+          ['tenantId', 'Which tenant made the request'],
+          ['userId', 'User identifier (from API key or explicit header)'],
+          ['model', 'Actual model used (after routing resolution)'],
+          ['requestedModel', 'Model requested by client (may be "auto" or an alias)'],
+          ['category', 'Auto-routing category (if auto-routed)'],
+          ['inputTokens', 'Prompt + context tokens'],
+          ['outputTokens', 'Generated tokens'],
+          ['inputCost', 'Input token cost (USD)'],
+          ['outputCost', 'Output token cost (USD)'],
+          ['actualCost', 'Total actual cost'],
+          ['baselineCost', 'Cost at list price of the originally requested model'],
+          ['saved', 'baselineCost − actualCost (reflects routing savings)'],
+          ['durationMs', 'End-to-end request duration'],
+          ['status', 'success or error'],
+          ['errorMessage', 'Error details if status = error'],
+          ['autoRouted', 'Whether auto-routing was used'],
+          ['contextFallback', 'Whether a context overflow fallback occurred'],
+          ['streaming', 'Whether the response was streamed'],
+          ['sessionId', 'Session ID for grouping related requests (auto-generated or from x-session-id header)'],
+          ['responseSnapshot', 'Truncated assistant response (4000 chars) + finish reason — when prompt logging is enabled'],
+          ['contextWindowUsed', 'Context window of the model that served the request'],
+          ['systemPromptHash', 'SHA-256 hash (first 8 chars) of the system prompt — enables agent grouping without storing content'],
+          ['routingSignals', 'Pre-routing signals: token count, images, tool calls, domains, languages, isFimRequest, isToolAgentRequest, prevSessionFillPct'],
+        ].map(([field, desc]) => (
+          <tr>
+            <td class="border-t border-white/10 px-4 py-2 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">{field}</code></td>
+            <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">{desc}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Cost Calculation</h2>
+  <p class="text-white/55 leading-relaxed mb-4">Costs are calculated using a three-level pricing lookup:</p>
+  <pre class="bg-[#0d0d14] border border-white/10 rounded-lg p-4 overflow-x-auto text-sm text-white/70 mb-6 font-mono"><code>1. Tenant pricing override  (set per-model on the tenant)
+   ↓ not found
+2. pricingDefaults.js        (flat table with fuzzy model name matching)
+   ↓ not found
+3. modelRegistry.js          (inputPer1M / outputPer1M fields)
+   ↓ not found
+4. $0.00                     (unknown model — no cost tracked)</code></pre>
+
+  <p class="text-white/55 leading-relaxed mb-2">The <strong class="text-white/80">baseline cost</strong> is calculated at the list price of the originally requested model (before routing). This allows the dashboard to show how much was saved by routing to a cheaper model.</p>
+  <p class="text-white/55 leading-relaxed mb-2 text-sm font-medium">Example:</p>
+  <pre class="bg-[#0d0d14] border border-white/10 rounded-lg p-4 overflow-x-auto text-sm text-white/70 mb-6 font-mono"><code>Client requests:  model="auto" (resolves to gpt-4o-mini via routing)
+Baseline model:   gpt-4o (default if client had specified a model)
+
+inputTokens:  1 200
+outputTokens: 340
+
+actualCost:   1200/1M × $0.15  +  340/1M × $0.60  = $0.000384
+baselineCost: 1200/1M × $2.50  +  340/1M × $10.00 = $0.006400
+saved:        $0.006016  (94% savings)</code></pre>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Daily Aggregates</h2>
+  <p class="text-white/55 leading-relaxed mb-4">For dashboard performance, per-day aggregates are maintained in <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">DailyStat</code>. Updates are written with <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">$inc</code> operators — no read-modify-write cycles.</p>
+  <pre class="bg-[#0d0d14] border border-white/10 rounded-lg p-4 overflow-x-auto text-sm text-white/70 mb-6 font-mono"><code>DailyStat &#123;
+  tenantId,
+  date: "2026-04-01",
+  requests:        1 240,
+  autoRoutedCount:   980,
+  inputTokens:   4 820 000,
+  outputTokens:    920 000,
+  actualCost:         18.42,
+  baselineCost:       74.80,
+  saved:              56.38,
+&#125;</code></pre>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Dashboard</h2>
+  <p class="text-white/55 leading-relaxed mb-4">The dashboard provides an overview across all tenants (admin/maintainer) or scoped to assigned tenants (tenant-viewer/tenant-admin).</p>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-3">Time Range Filter
+  </h3>
+  <p class="text-white/55 leading-relaxed mb-4">All dashboard KPIs, charts, model usage, and category distribution adapt to the selected time range. Six presets are available: <strong class="text-white/80">6h, 12h, 24h</strong> (hourly granularity, aggregated from <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">RequestLog</code>) and <strong class="text-white/80">7d, 30d, 90d</strong> (daily granularity, aggregated from <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">DailyStat</code>). The chart X-axis automatically adjusts: <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">14:00</code> for hourly, <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">04-08</code> for daily.</p>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-3">KPI Cards</h3>
+  <div class="overflow-x-auto mb-6">
+    <table class="w-full border-collapse">
+      <thead>
+        <tr>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Card</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Value</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Subtitle</th>
+        </tr>
+      </thead>
+      <tbody>
+        {[
+          ['Total Cost', 'Sum of actual cost', 'Last N days'],
+          ['Savings vs Baseline', 'Sum of saved', 'Percentage of baseline'],
+          ['Requests', 'Total request count', '% auto-routed (count)'],
+          ['Input Tokens', 'Sum of input tokens', 'Prompt / context tokens'],
+          ['Output Tokens', 'Sum of output tokens', 'Generated tokens'],
+          ['Classifier Cost', 'Sum of routing/classifier cost', 'Count of classified requests'],
+        ].map(([card, val, sub]) => (
+          <tr>
+            <td class="border-t border-white/10 px-4 py-2 text-white/70 text-sm font-medium">{card}</td>
+            <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">{val}</td>
+            <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">{sub}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-3">Charts</h3>
+  <ul class="list-disc ml-6 text-white/55 space-y-2 mb-4">
+    <li><strong class="text-white/80">Cost Over Time</strong> — Area chart with two series: Actual Cost (filled blue) and Baseline Cost (filled grey)</li>
+    <li><strong class="text-white/80">Token Usage Over Time</strong> — Stacked bar chart: Input Tokens (orange) and Output Tokens (yellow)</li>
+    <li><strong class="text-white/80">Model Usage</strong> — Bar chart: requests per model over the selected period</li>
+  </ul>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-3">Filters</h3>
+  <ul class="list-disc ml-6 text-white/55 space-y-1 mb-6">
+    <li><strong class="text-white/80">Tenant selector</strong> — filter dashboard to a single tenant (all tenants by default)</li>
+    <li><strong class="text-white/80">Time range</strong> — Last 7 / 30 / 90 days</li>
+  </ul>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Request Log</h2>
+  <p class="text-white/55 leading-relaxed mb-4">The request log shows individual requests with full details. Available to <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">admin</code>, <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">maintainer</code>, and <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">finops</code> roles.</p>
+  <p class="text-white/55 leading-relaxed mb-2">Filters: Tenant, Model, Status (all/success/error), Auto-routed, Category, Time presets.</p>
+  <p class="text-white/55 leading-relaxed mb-4">Special indicators: <strong class="text-white/80">context_fallback badge</strong> (orange, shows original&rarr;fallback model), <strong class="text-white/80">auto_routed badge</strong> (shows category and confidence), <strong class="text-white/80">error badge</strong> (red, with truncated error on hover).</p>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-3">Time & Category Filters
+  </h3>
+  <p class="text-white/55 leading-relaxed mb-4">The request log now includes <strong class="text-white/80">time preset buttons</strong> (1h, 6h, 24h, 7d) with a custom date range picker, and a <strong class="text-white/80">category filter</strong> dropdown for filtering by routing category (e.g. <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">coding_autocomplete</code>). Both filters are server-side with indexed queries.</p>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-3">Expanded Row Details
+  </h3>
+  <p class="text-white/55 leading-relaxed mb-4">Clicking a row to expand it now shows additional context beyond prompt snapshots:</p>
+  <ul class="list-disc ml-6 text-white/55 space-y-1 mb-6">
+    <li><strong class="text-white/80">Routing Debug Panel</strong> — for auto-routed requests, shows the full routing decision chain: extracted signals (tokens, images, tool calls, FIM, domains, languages), pre-routing status with signal source, classifier confidence bar, all applied overrides as badges, and final model/tier with routing time and classifier cost</li>
+    <li><strong class="text-white/80">Error display</strong> — failed requests show the error type and message inline, even without prompt logging enabled</li>
+    <li><strong class="text-white/80">Captured paths</strong> — file paths referenced in the request are displayed as code badges</li>
+  </ul>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-3">Hide Autocomplete Filter
+  </h3>
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-3">Override Filter
+  </h3>
+  <p class="text-white/55 leading-relaxed mb-4">A dropdown filter for <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">overrideApplied</code> values lets you isolate requests affected by specific routing overrides: <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">frustration_upgrade</code>, <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">classifier_fallback</code>, <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">session_context_upgrade</code>, etc. Uses regex matching so multi-override strings are included. Expanded rows now also display the model's response content when prompt logging is enabled.</p>
+
+  <p class="text-white/55 leading-relaxed mb-4">A "Hide autocomplete" toggle in the filter bar excludes all <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">coding_autocomplete</code> and <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">tool_use</code> requests so they don't clutter the view when analysing agent or user traffic. Server-side filter via <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">?excludeAutocomplete=1</code> query param.</p>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-3">Retroactive FIM Reclassification
+  </h3>
+  <p class="text-white/55 leading-relaxed mb-4">The "Reclassify FIM" button (admin only) scans unclassified requests from the last 30 days that have stored prompt snapshots and backfills <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">category</code>, <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">isFimRequest</code>, and <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">isToolAgentRequest</code> using current detection logic. API: <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">POST /api/prism/admin/dashboard/reclassify-fim</code>.</p>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-3">Session Column
+  </h3>
+  <p class="text-white/55 leading-relaxed mb-4">The request log includes a <strong class="text-white/80">Session</strong> column displaying clickable session ID badges. Clicking a session ID filters the log to show all requests belonging to that session. A <strong class="text-white/80">"Group by session"</strong> toggle adds colored left borders for visual grouping of related requests. The backend supports <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">?sessionId=</code> filtering.</p>
+  <p class="text-white/55 leading-relaxed mb-4">Session grouping also uses the <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">systemPromptHash</code> field. Requests from the same agent or tool (e.g. Claude Code, Continue, Cursor) that share an identical system prompt are grouped visually even if they have different session IDs. The hash is computed server-side (SHA-256, first 8 chars) — no raw prompt content is stored.</p>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-3">Gateway Error Logging
+  </h3>
+  <p class="text-white/55 leading-relaxed mb-4">All gateway errors are now logged to <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">RequestLog</code>, including:</p>
+  <ul class="list-disc ml-6 text-white/55 space-y-1 mb-4">
+    <li>Authentication failures (invalid key, expired key, disabled key)</li>
+    <li>Rate limit rejections</li>
+    <li>Budget limit blocks</li>
+    <li>Access denied (model not allowed)</li>
+    <li>Provider not found</li>
+    <li>Budget guard blocks</li>
+    <li>Upstream / provider errors</li>
+    <li>Stream errors</li>
+  </ul>
+  <p class="text-white/55 leading-relaxed mb-4">Each error is stored with <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">status=error</code>, the HTTP status code, an <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">errorType</code> field, and the error message. New indexed <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">errorType</code> values: <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">context_length_exceeded</code>, <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">max_tokens_exceeded</code>, <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">provider_error</code>.</p>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Token Estimation</h2>
+  <p class="text-white/55 leading-relaxed mb-4">For requests where the provider does not return token counts (e.g. streaming), tokens are estimated offline:</p>
+  <pre class="bg-[#0d0d14] border border-white/10 rounded-lg p-4 overflow-x-auto text-sm text-white/70 mb-4 font-mono"><code>estimatedTokens ≈ totalChars / 3.5</code></pre>
+  <p class="text-white/55 leading-relaxed mb-4">Adjustments: code blocks counted at 1 char/token; ~4 tokens overhead per message. The token service also performs a pre-flight check — if estimated tokens exceed the model's context window, the request is automatically upgraded to a larger-context model.</p>
+  <p class="text-white/55 leading-relaxed mb-6">Streaming requests send <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">include_usage: true</code> so providers return a usage chunk with accurate token counts. When the provider still does not report usage, the gateway falls back to the pre-computed estimate from signal extraction.</p>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Benchmarks & AI Evaluation
+  </h2>
+  <p class="text-white/55 leading-relaxed mb-4">The Benchmarks API at <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">/api/prism/admin/benchmarks/</code> exposes request logs in a structured format designed for AI-driven quality evaluation.</p>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-3">Session Tracking</h3>
+  <p class="text-white/55 leading-relaxed mb-4">Clients send an <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">x-session-id</code> header to group related requests. Sessions enable analysis of conversational coherence — whether the router maintains consistent model selection within a conversation or bounces between models.</p>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-3">Activity Dump</h3>
+  <p class="text-white/55 leading-relaxed mb-4">Each activity entry contains the complete decision context: what was requested, how the router decided, which model was chosen and why, what the model produced, and what it cost. This enables a Benchmark Agent to evaluate routing accuracy, detect over/under-routing patterns, and recommend parameter changes.</p>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-3">Benchmark Agent</h3>
+  <p class="text-white/55 leading-relaxed mb-4">Model Prism ships with a <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">benchmark-agent.md</code> playbook that describes an autonomous evaluation cycle: collect recent logs, analyze routing quality, dry-run proposed changes via the routing benchmark endpoint, apply incrementally, and re-evaluate. The agent can tune token thresholds, keyword rules, signal weights, category tier assignments, cost modes, and model priorities.</p>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Built-in WebChat
+  </h2>
+  <p class="text-white/55 leading-relaxed mb-4">Model Prism includes a lightweight chat interface accessible from the admin UI sidebar. It supports SSE streaming (no WebSockets required), making it compatible with environments that block WebSocket connections.</p>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-3">Features</h3>
+  <ul class="list-disc ml-6 text-white/55 space-y-1 mb-4">
+    <li><strong class="text-white/80">Model selection</strong> — dropdown with all available models, default <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">auto</code> (Model Prism routing)</li>
+    <li><strong class="text-white/80">Markdown rendering</strong> — full Markdown support with syntax-highlighted code blocks and copy-to-clipboard buttons</li>
+    <li><strong class="text-white/80">Response metadata</strong> — every assistant response shows the routed model, category, tier, token count, and cost as small badges</li>
+    <li><strong class="text-white/80">SSE streaming</strong> — real-time token-by-token output via Server-Sent Events, no WebSocket dependency</li>
+  </ul>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-3">Visibility Modes</h3>
+  <p class="text-white/55 leading-relaxed mb-4">Chat visibility is configurable in <strong class="text-white/80">System &rarr; Chat Settings</strong>:</p>
+  <ul class="list-disc ml-6 text-white/55 space-y-1 mb-4">
+    <li><strong class="text-white/80">Admin only</strong> (default) — requires login to the admin UI</li>
+    <li><strong class="text-white/80">Public</strong> — accessible at <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">/public-chat</code> without login, rate-limited per IP</li>
+    <li><strong class="text-white/80">Token-based</strong> — requires a one-time access token generated by an admin. Tokens have configurable expiry and can be revoked</li>
+  </ul>
+  <p class="text-white/55 leading-relaxed mb-4">Admins can also configure: allowed models whitelist, default model, system prompt injection, rate limits (requests/min, max tokens/request), and access token management.</p>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Webhooks &amp; Event Notifications
+  </h2>
+  <p class="text-white/55 leading-relaxed mb-4">Model Prism supports <strong class="text-white/80">per-tenant and global webhooks</strong> for real-time event notifications. All webhook payloads are signed with <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">HMAC-SHA256</code> for verification.</p>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-2">Delivery</h3>
+  <p class="text-white/55 leading-relaxed mb-4">Failed deliveries are retried with <strong class="text-white/80">exponential backoff</strong>. Delivery attempts are logged and retained for 30 days (TTL).</p>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-2">Event Types</h3>
+  <div class="overflow-x-auto mb-6">
+    <table class="w-full border-collapse">
+      <thead>
+        <tr>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Event</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">budget_threshold</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Tenant spend has reached the configured warning threshold</td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">budget_exceeded</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Tenant spend has exceeded the budget limit</td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">error_spike</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Error rate has spiked above the configured threshold</td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">provider_down</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">A provider circuit breaker has opened</td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">quota_exhausted</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Tenant quota has been fully consumed</td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">quota_warning</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Tenant quota usage is approaching the limit</td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">experiment_completed</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">An A/B testing experiment has reached statistical significance</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-2">Admin API</h3>
+  <p class="text-white/55 leading-relaxed mb-4">Webhooks are managed via <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">/api/prism/admin/webhooks/</code>.</p>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Provider Error Tracking
+  </h2>
+  <p class="text-white/55 leading-relaxed mb-4">All provider errors (400-level, 502s, timeouts) are logged to the <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">RequestLog</code> with a structured <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">errorType</code> field for filtering and analysis.</p>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-2">Error Types</h3>
+  <div class="overflow-x-auto mb-6">
+    <table class="w-full border-collapse">
+      <thead>
+        <tr>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">errorType</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">context_length_exceeded</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Input exceeded the model's context window</td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">max_tokens_exceeded</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Requested max_tokens exceeds the model's output limit</td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">provider_error</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Generic provider-side error (502, timeout, rate limit)</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-2">Automatic max_tokens Retry</h3>
+  <p class="text-white/55 leading-relaxed mb-4">When a <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">max_tokens_exceeded</code> error is detected, the gateway extracts the provider's reported limit from the error message, clamps the request to that limit, and automatically retries.</p>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-2">Streaming Retry with Fallback
+  </h3>
+  <p class="text-white/55 leading-relaxed mb-4">Streaming requests now have the same retry logic as non-streaming requests. The gateway transparently switches to the next provider without the client needing to reconnect.</p>
+  <ul class="list-disc ml-6 text-white/55 space-y-1 mb-4">
+    <li><strong class="text-white/80">Provider fallback chain</strong> — tries the next provider in priority order on failure</li>
+    <li><strong class="text-white/80">max_tokens auto-clamp</strong> — automatically clamps to the provider's reported limit on <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">max_tokens_exceeded</code></li>
+    <li><strong class="text-white/80">Context overflow model upgrade</strong> — upgrades to a larger-context model when the input exceeds the current model's window</li>
+    <li><strong class="text-white/80">Circuit breaker integration</strong> — unhealthy providers are skipped automatically</li>
+    <li><strong class="text-white/80">All provider errors logged</strong> — every failed attempt is recorded in <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">RequestLog</code>, not just the final failure</li>
+  </ul>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Prometheus Metrics</h2>
+  <p class="text-white/55 leading-relaxed mb-3">Available at <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">/metrics</code> (unauthenticated — firewall in production):</p>
+  <ul class="list-disc ml-6 text-white/55 space-y-1 mb-4">
+    <li><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">http_requests_total</code> — by method, path, status</li>
+    <li><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">http_request_duration_seconds</code> — histogram</li>
+    <li><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">omp_gateway_requests_total</code> — by tenant, model, status</li>
+    <li><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">omp_gateway_tokens_total</code> — input/output by tenant</li>
+    <li><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">omp_gateway_cost_total</code> — actual cost by tenant</li>
+    <li>Node.js default metrics (event loop lag, heap, GC)</li>
+  </ul>
+
+</DocsPage>

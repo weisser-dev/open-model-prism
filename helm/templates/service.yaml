@@ -1,0 +1,52 @@
+{{- if eq .Values.mode "standalone" }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "model-prism.fullname" . }}
+  labels:
+    {{- include "model-prism.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "model-prism.selectorLabels" . | nindent 4 }}
+
+{{- else if eq .Values.mode "scaled" }}
+# Service for the control plane (Admin UI + Admin API)
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "model-prism.fullname" . }}-control
+  labels:
+    {{- include "model-prism.controlLabels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "model-prism.controlSelectorLabels" . | nindent 4 }}
+---
+# Service for workers (Gateway / LLM traffic)
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "model-prism.fullname" . }}-worker
+  labels:
+    {{- include "model-prism.workerLabels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "model-prism.workerSelectorLabels" . | nindent 4 }}
+{{- end }}

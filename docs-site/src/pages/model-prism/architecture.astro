@@ -1,0 +1,304 @@
+---
+import DocsPage from '../../layouts/DocsPage.astro';
+---
+
+<DocsPage title="Architecture — Model Prism" description="System architecture, request flow, directory structure, authentication, RBAC, and deployment modes for Open Model Prism.">
+
+  <h1 class="text-3xl font-bold text-white mb-6">Architecture</h1>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">System Overview</h2>
+  <p class="text-white/55 leading-relaxed mb-4">Open Model Prism is a Node.js/Express backend that serves both the REST API and the compiled React frontend as static files. MongoDB is the only external dependency. It can run as a single container or split into a Control Plane and one or more Worker pods for horizontal scaling.</p>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-2">Single-Pod (default)</h3>
+  <pre class="bg-[#0d0d14] border border-white/10 rounded-lg p-4 overflow-x-auto text-sm text-white/70 mb-6 font-mono"><code>+------------------------------------------------------------+
+|  Browser / Client Tools                                    |
+|  (OpenWebUI, Cursor, Continue, Claude Code, SDK, ...)      |
++----------------------------+-------------------------------+
+                             |  HTTP / SSE
+                             v
++------------------------------------------------------------+
+|  Open Model Prism  (Node.js 20, Express v5)                |
+|                                                            |
+|  +--------------+  +--------------+  +------------------+  |
+|  |  Admin UI    |  |  Gateway API |  |  Static Frontend |  |
+|  |  /api/prism/ |  |  /api/:slug  |  |  React + Mantine |  |
+|  +------+-------+  +------+-------+  +------------------+  |
+|         |                  |                                |
+|  +------v------------------v-----------------------------+  |
+|  |  Services                                             |  |
+|  |  routerEngine, analyticsEngine, pricingService        |  |
+|  |  tokenService, modelEnrichmentService                 |  |
+|  +---------------------------+---------------------------+  |
+|                              |                              |
+|  +---------------------------v---------------------------+  |
+|  |  Provider Adapters                                    |  |
+|  |  OpenAI-compat, Bedrock, Azure, Ollama                |  |
+|  +-------------------------------------------------------+  |
++----------------------------+-------------------------------+
+                             |
+            +----------------+----------------+
+            v                v                v
+        MongoDB         LLM Providers     models.dev
+     (data store)   (OpenAI, Anthropic,  (enrichment,
+                     Bedrock, Ollama...)   optional)</code></pre>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-2">Scaled Deployment (Control Plane + Workers)</h3>
+  <p class="text-white/55 leading-relaxed mb-4">For larger teams, the gateway can be split from the Admin UI and scaled independently using <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">NODE_ROLE</code>:</p>
+  <pre class="bg-[#0d0d14] border border-white/10 rounded-lg p-4 overflow-x-auto text-sm text-white/70 mb-6 font-mono"><code>Clients (Continue, Cursor, Claude Code, Open WebUI, SDK ...)
+    |
+    +-- /* (admin UI, /api/prism/admin/*)
+    |          |
+    |          v
+    |   +----------------------------+
+    |   |  Control Plane             |
+    |   |  NODE_ROLE=control         |
+    |   |  Admin UI + Admin API      |
+    |   +----------------------------+
+    |
+    +-- /api/:tenant/v1/*
+               |
+               v
+    +---------------------------+---------------------------+
+    |  Worker Pod 1             |  Worker Pod 2        ...  |
+    |  NODE_ROLE=worker         |  NODE_ROLE=worker         |
+    |  Gateway only             |  Gateway only             |
+    +-------------+-------------+---------------------------+
+                  |
+                  v
+             MongoDB  (shared state: tenants, providers,
+                       routing rules, analytics, pod metrics)</code></pre>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Deployment Modes</h2>
+  <p class="text-white/55 leading-relaxed mb-4">Three modes are available via the <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">NODE_ROLE</code> environment variable:</p>
+  <div class="overflow-x-auto mb-6">
+    <table class="w-full border-collapse">
+      <thead>
+        <tr>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm"><code class="font-mono">NODE_ROLE</code></th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Serves</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Use case</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">full</code> (default)</td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Admin UI + Gateway</td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Development, small teams (&lt;50 users)</td>
+        </tr>
+        <tr>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">control</code></td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Admin UI + Admin API only</td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Control plane in a scaled deployment</td>
+        </tr>
+        <tr>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">worker</code></td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Gateway only (<code class="font-mono">/api/:tenant/v1/*</code>)</td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Horizontally scaled request handling</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="text-white/55 leading-relaxed mb-4">All pods share a single MongoDB database. Worker pods are stateless and can be added or removed without downtime. See <a href="/model-prism/operations" class="text-[#38bdf8] hover:text-[#7dd3fc]">Operations</a> for capacity planning and configuration details.</p>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Request Flow (Gateway)</h2>
+  <p class="text-white/55 leading-relaxed mb-4">Every client request hitting <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">/api/:tenant/v1/...</code> passes through these stages:</p>
+  <pre class="bg-[#0d0d14] border border-white/10 rounded-lg p-4 overflow-x-auto text-sm text-white/70 mb-6 font-mono"><code>POST /api/team-alpha/v1/chat/completions
+  │
+  ├─ 1. Tenant Auth
+  │     Look up tenant by slug -> find API key hash -> verify Bearer token
+  │     Check key enabled, not expired
+  │     Load tenant config (providers, routing, model aliases) — cached 60s
+  │
+  ├─ 2. Per-Tenant Rate Limiting
+  │     Sliding window in-memory counter (requestsPerMinute per tenant)
+  │     Returns 429 on breach
+  │
+  ├─ 3. Model Alias Resolution
+  │     Resolve tenant-specific aliases  e.g. "gpt-4" -> "gpt-4o"
+  │
+  ├─ 4. Force-Auto-Route Check
+  │     If tenant has forceAutoRoute=true, override requested model with "auto"
+  │
+  ├─ 5. Auto-Routing  (only if model = "auto")
+  │     Signal extraction -> override rules -> [LLM classifier if needed]
+  │     -> category + confidence + target model ID
+  │     See: routing docs
+  │
+  ├─ 6. Provider Selection
+  │     Find provider that has the target model
+  │     Select provider adapter (OpenAI-compat / Bedrock / Azure / Ollama)
+  │
+  ├─ 7. Context Pre-flight
+  │     Estimate total token count (tokenService)
+  │     If count > model.contextWindow -> findLargerContextModel -> swap model
+  │
+  ├─ 8. Provider Adapter Call
+  │     Forward request (non-streaming: await response)
+  │     (streaming: pipe SSE chunks directly to client)
+  │
+  ├─ 9. Context Overflow Retry  (non-streaming only)
+  │     If provider returns context-overflow error -> retry with larger model
+  │     Adds context_fallback field to response
+  │
+  ├─ 10. Response Enrichment
+  │     Inject cost_info, auto_routing, context_fallback into response body
+  │
+  └─ 11. Async Analytics Logging  (fire-and-forget via setImmediate)
+         Write RequestLog, update DailyStat, update DailyUserStat</code></pre>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Directory Structure</h2>
+  <pre class="bg-[#0d0d14] border border-white/10 rounded-lg p-4 overflow-x-auto text-sm text-white/70 mb-6 font-mono"><code>open-model-prism/
+├── server/                     Express backend (ESM, Node 20+)
+│   ├── index.js                Entry point: routes, middleware, graceful shutdown
+│   ├── config.js               Env-var config with defaults
+│   ├── db.js                   Mongoose connection + retry logic
+│   │
+│   ├── models/                 Mongoose schemas
+│   │   ├── Tenant.js           slug, apiKeyHash, providers, routing, modelConfig
+│   │   ├── Provider.js         type, encrypted credentials, discoveredModels
+│   │   ├── User.js             roles, LDAP flag, tenants, lastLogin
+│   │   ├── RoutingCategory.js  key, costTier, defaultModel, examples
+│   │   ├── RequestLog.js       per-request log: tokens, cost, category, model
+│   │   └── DailyStat.js        daily aggregates: cost, tokens, requests
+│   │
+│   ├── routes/
+│   │   ├── admin/              Provider, tenant, category, dashboard, user CRUD
+│   │   ├── gateway/            OpenAI-compat proxy (/api/:tenant/v1/*)
+│   │   ├── auth.js             Login, JWT issue, /me
+│   │   ├── setup.js            First-run setup wizard endpoints
+│   │   ├── tenant-portal.js    Self-service API for tenant-admin role
+│   │   └── metrics.js          Prometheus /metrics
+│   │
+│   ├── middleware/             auth, RBAC, setup check
+│   ├── services/              routerEngine, analyticsEngine, pricingService, ...
+│   ├── providers/             OpenAI-compat, Bedrock, Azure, Ollama adapters
+│   ├── data/                  modelRegistry, presetProfiles, pricingDefaults
+│   └── utils/                 encryption, logger, sanitize
+│
+├── frontend/src/              React + Mantine admin UI
+│   ├── App.jsx                App shell, routing, nav
+│   └── pages/                 Dashboard, Providers, Tenants, Models, ...
+│
+└── docs/                      Documentation</code></pre>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Authentication &amp; Security</h2>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-2">Admin UI (JWT)</h3>
+  <p class="text-white/55 leading-relaxed mb-4">All <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">/api/prism/admin/*</code> and <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">/api/prism/auth/*</code> endpoints use JWT Bearer tokens:</p>
+  <pre class="bg-[#0d0d14] border border-white/10 rounded-lg p-4 overflow-x-auto text-sm text-white/70 mb-6 font-mono"><code>POST /api/prism/auth/login  ->  &#123; token: "eyJ..." &#125;
+GET  /api/prism/admin/...   ->  Authorization: Bearer eyJ...</code></pre>
+  <p class="text-white/55 leading-relaxed mb-4">Tokens are signed with <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">JWT_SECRET</code>, contain <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">&#123; id, username, role, tenants &#125;</code>, and have no built-in expiry (server restart invalidates all tokens).</p>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-2">Gateway (Per-Tenant API Key)</h3>
+  <pre class="bg-[#0d0d14] border border-white/10 rounded-lg p-4 overflow-x-auto text-sm text-white/70 mb-6 font-mono"><code>omp-&lt;64 hex chars&gt;   (example: omp-a3f9b2...)</code></pre>
+  <p class="text-white/55 leading-relaxed mb-4">The key is shown only once on creation. The stored value is <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">SHA-256(key)</code>. Checks performed on every request:</p>
+  <ol class="list-decimal ml-6 text-white/55 space-y-1 mb-4">
+    <li>Extract Bearer token &rarr; compute SHA-256 &rarr; lookup tenant</li>
+    <li><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">keyEnabled === false</code> &rarr; 401 <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">key_disabled</code></li>
+    <li><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">keyExpiresAt &lt; now</code> &rarr; 401 <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">key_expired</code></li>
+    <li>Tenant <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">enabled === false</code> &rarr; 401 <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">tenant_disabled</code></li>
+  </ol>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-2">Credential Encryption</h3>
+  <p class="text-white/55 leading-relaxed mb-4">Provider API keys and secrets are encrypted at rest using AES-256-GCM:</p>
+  <pre class="bg-[#0d0d14] border border-white/10 rounded-lg p-4 overflow-x-auto text-sm text-white/70 mb-6 font-mono"><code>Format: enc:&lt;ivHex&gt;:&lt;authTagHex&gt;:&lt;ciphertextHex&gt;
+Key:    ENCRYPTION_KEY env var (32-byte hex)</code></pre>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">RBAC Roles</h2>
+  <div class="overflow-x-auto mb-6">
+    <table class="w-full border-collapse">
+      <thead>
+        <tr>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Role</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Scope</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Key permissions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">admin</code></td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Global</td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Everything — users, LDAP, providers, tenants, categories</td>
+        </tr>
+        <tr>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">maintainer</code></td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Global</td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Providers, tenants, categories, model registry, analytics</td>
+        </tr>
+        <tr>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">finops</code></td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Global</td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Read-only: dashboard, costs, request log (all tenants)</td>
+        </tr>
+        <tr>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">tenant-viewer</code></td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Assigned tenants</td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Read-only: dashboard scoped to own tenants</td>
+        </tr>
+        <tr>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">tenant-admin</code></td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Assigned tenants</td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Self-service: model access config, generate client configs</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="text-white/55 leading-relaxed mb-4">Role checks are applied in middleware before route handlers. Admin/maintainer bypass all tenant-scoping checks.</p>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Offline Mode</h2>
+  <p class="text-white/55 leading-relaxed mb-4">Set <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">OFFLINE=true</code> to disable all outbound internet calls:</p>
+  <ul class="list-disc ml-6 text-white/55 space-y-1 mb-4">
+    <li><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">modelEnrichmentService</code> loads <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">data/modelsDev.snapshot.json</code> instead of fetching models.dev</li>
+    <li>Token estimation uses the built-in character-based heuristic (no external tokenizer)</li>
+    <li>All routing, gateway, and admin functionality works fully offline</li>
+  </ul>
+  <p class="text-white/55 leading-relaxed mb-4">No other behavior changes. Suitable for air-gapped production environments.</p>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Rate Limiting</h2>
+  <p class="text-white/55 leading-relaxed mb-4">Three independent limiters are applied at different layers:</p>
+  <div class="overflow-x-auto mb-6">
+    <table class="w-full border-collapse">
+      <thead>
+        <tr>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Layer</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Limit</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Scope</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Auth endpoints</td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">20 req/min</td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Per IP — brute-force protection</td>
+        </tr>
+        <tr>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Admin API</td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">300 req/min</td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Per IP</td>
+        </tr>
+        <tr>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Gateway</td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">600 req/min</td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Per IP (outer layer)</td>
+        </tr>
+        <tr>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Per-tenant gateway</td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Configurable req/min</td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Per tenant (sliding window, in-memory)</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Analytics Pipeline</h2>
+  <p class="text-white/55 leading-relaxed mb-4">Request analytics are written asynchronously (fire-and-forget via <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">setImmediate</code>) to avoid adding latency to the gateway response path:</p>
+  <pre class="bg-[#0d0d14] border border-white/10 rounded-lg p-4 overflow-x-auto text-sm text-white/70 mb-6 font-mono"><code>Gateway response sent to client
+  │
+  └─ setImmediate ->  analyticsEngine.logRequest()
+                       │
+                       ├─ upsert RequestLog document
+                       ├─ $inc DailyStat (cost, tokens, requests)
+                       └─ $inc DailyUserStat (per user breakdown)</code></pre>
+  <p class="text-white/55 leading-relaxed mb-4">If the analytics write fails, the gateway request is unaffected.</p>
+
+</DocsPage>

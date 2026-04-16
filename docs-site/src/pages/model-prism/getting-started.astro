@@ -1,0 +1,279 @@
+---
+import DocsPage from '../../layouts/DocsPage.astro';
+---
+
+<DocsPage title="Getting Started — Model Prism" description="Install and configure Open Model Prism. Docker Compose setup, environment variables, setup wizard, first tenant, and gateway usage.">
+
+  <h1 class="text-3xl font-bold text-white mb-6">Getting Started</h1>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Prerequisites</h2>
+  <ul class="list-disc ml-6 text-white/55 space-y-1 mb-4">
+    <li><strong class="text-white/80">Node.js</strong> 20+ (recommended: via <a href="https://github.com/nvm-sh/nvm" class="text-[#38bdf8] hover:text-[#7dd3fc]">nvm</a>)</li>
+    <li><strong class="text-white/80">Docker</strong> &amp; <strong class="text-white/80">Docker Compose</strong> (for MongoDB, or run MongoDB locally)</li>
+    <li><strong class="text-white/80">just</strong> (optional, for convenience commands) — install: <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">brew install just</code> / <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">cargo install just</code></li>
+  </ul>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Option 1: Docker Compose (recommended)</h2>
+  <pre class="bg-[#0d0d14] border border-white/10 rounded-lg p-4 overflow-x-auto text-sm text-white/70 mb-6 font-mono"><code>git clone https://github.com/weisser-dev/open-model-prism
+cd model-prism
+cp .env.example .env   # edit JWT_SECRET and ENCRYPTION_KEY
+docker compose up -d</code></pre>
+  <p class="text-white/55 leading-relaxed mb-4">Open <strong class="text-white/80">http://localhost:3000</strong> — the setup wizard will guide you through initial configuration.</p>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-2">Environment Variables</h3>
+  <div class="overflow-x-auto mb-6">
+    <table class="w-full border-collapse">
+      <thead>
+        <tr>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Variable</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Required</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Default</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">MONGODB_URI</code></td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">No</td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">mongodb://mongodb:27017/openmodelprism</code></td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">MongoDB connection string</td>
+        </tr>
+        <tr>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">JWT_SECRET</code></td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><strong class="text-white/80">Yes</strong></td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">change-me</code></td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Secret for JWT token signing — change in production</td>
+        </tr>
+        <tr>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">ENCRYPTION_KEY</code></td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><strong class="text-white/80">Yes</strong></td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">change-me-32-chars</code></td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">32-byte hex key for AES-256-GCM credential encryption</td>
+        </tr>
+        <tr>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">PORT</code></td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">No</td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">3000</code></td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">HTTP server port</td>
+        </tr>
+        <tr>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">CORS_ORIGINS</code></td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">No</td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">*</code></td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Allowed CORS origins (comma-separated)</td>
+        </tr>
+        <tr>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">OFFLINE</code></td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">No</td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">false</code></td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">true</code> = disable all outbound internet (air-gapped environments)</td>
+        </tr>
+        <tr>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">LOG_LEVEL</code></td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">No</td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">info</code></td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">debug</code> / <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">info</code> / <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">warn</code> / <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">error</code></td>
+        </tr>
+        <tr>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">NODE_ENV</code></td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">No</td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">development</code></td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">production</code> = JSON structured logs</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Option 2: Local Development (hot reload)</h2>
+  <pre class="bg-[#0d0d14] border border-white/10 rounded-lg p-4 overflow-x-auto text-sm text-white/70 mb-6 font-mono"><code># Install dependencies
+just install
+# or: cd server && npm install && cd ../frontend && npm install
+
+# Start MongoDB
+docker compose up -d mongodb
+
+# Terminal 1 — backend with file watching
+just dev-backend
+# or: cd server && npm run dev
+
+# Terminal 2 — frontend (Vite HMR)
+just dev-frontend
+# or: cd frontend && npm run dev</code></pre>
+  <ul class="list-disc ml-6 text-white/55 space-y-1 mb-4">
+    <li>Frontend: <strong class="text-white/80">http://localhost:5173</strong> (proxies <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">/api</code> to backend)</li>
+    <li>Backend: <strong class="text-white/80">http://localhost:3000</strong></li>
+  </ul>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Setup Wizard</h2>
+  <p class="text-white/55 leading-relaxed mb-4">The wizard runs on first start. It guides you through four steps:</p>
+  <ol class="list-decimal ml-6 text-white/55 space-y-1 mb-4">
+    <li><strong class="text-white/80">Admin Account</strong> — create the first admin user (username + password, min 8 chars)</li>
+    <li><strong class="text-white/80">First Provider</strong> — connect an LLM provider (OpenAI, Ollama, OpenRouter, etc.)
+      <ul class="list-disc ml-6 mt-1 space-y-1">
+        <li>Enter a name, select type, enter base URL (no <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">/v1</code> suffix) and API key</li>
+        <li>Click <strong class="text-white/80">Test &amp; Add Provider</strong> — connection is verified and models discovered automatically</li>
+        <li>Optional: test a model in the built-in chat widget before continuing</li>
+        <li>Click <strong class="text-white/80">Skip for now</strong> if you want to add providers later</li>
+      </ul>
+    </li>
+    <li><strong class="text-white/80">Profiles</strong> — select one or more preset profiles to pre-configure routing categories
+      <ul class="list-disc ml-6 mt-1 space-y-1">
+        <li>Each profile is a bundle of routing categories with recommended model assignments</li>
+        <li>Skippable — you can apply profiles later from the Categories page</li>
+      </ul>
+    </li>
+    <li><strong class="text-white/80">Complete</strong> — setup done, redirects to dashboard</li>
+  </ol>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">First Tenant</h2>
+  <ol class="list-decimal ml-6 text-white/55 space-y-1 mb-4">
+    <li>Go to <strong class="text-white/80">Tenants</strong> in the sidebar</li>
+    <li>Click <strong class="text-white/80">Add Tenant</strong></li>
+    <li>Choose a <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">slug</code> (e.g. <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">team-alpha</code>) — this determines your gateway URL</li>
+    <li>Assign one or more providers</li>
+    <li>Click <strong class="text-white/80">Save</strong> and <strong class="text-white/80">copy the API key</strong> — shown only once</li>
+  </ol>
+  <p class="text-white/55 leading-relaxed mb-4">Your gateway endpoint is now live:</p>
+  <pre class="bg-[#0d0d14] border border-white/10 rounded-lg p-4 overflow-x-auto text-sm text-white/70 mb-6 font-mono"><code>https://your-host/api/team-alpha/v1</code></pre>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Using the Gateway</h2>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-2">OpenAI SDK</h3>
+  <pre class="bg-[#0d0d14] border border-white/10 rounded-lg p-4 overflow-x-auto text-sm text-white/70 mb-6 font-mono"><code>from openai import OpenAI
+
+client = OpenAI(
+    api_key="omp-your-api-key",
+    base_url="http://localhost:3000/api/team-alpha/v1",
+)
+
+response = client.chat.completions.create(
+    model="gpt-4o",           # any model from your providers
+    messages=[&#123;"role": "user", "content": "Hello!"&#125;]
+)
+print(response.choices[0].message.content)</code></pre>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-2">Auto-Routing</h3>
+  <pre class="bg-[#0d0d14] border border-white/10 rounded-lg p-4 overflow-x-auto text-sm text-white/70 mb-6 font-mono"><code>response = client.chat.completions.create(
+    model="auto",             # Open Model Prism chooses the best model
+    messages=[&#123;"role": "user", "content": "Write a Python function to parse JSON"&#125;]
+)
+
+# Response includes routing info:
+# response.auto_routing.category   -> "code_generation"
+# response.auto_routing.model_id   -> "deepseek-coder-v2"
+# response.cost_info.saved         -> 0.0042</code></pre>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-2">curl</h3>
+  <pre class="bg-[#0d0d14] border border-white/10 rounded-lg p-4 overflow-x-auto text-sm text-white/70 mb-6 font-mono"><code>curl http://localhost:3000/api/team-alpha/v1/chat/completions \
+  -H "Authorization: Bearer omp-your-api-key" \
+  -H "Content-Type: application/json" \
+  -d '&#123;"model": "auto", "messages": [&#123;"role": "user", "content": "Hello!"&#125;]&#125;'</code></pre>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Connecting Client Tools</h2>
+  <p class="text-white/55 leading-relaxed mb-4">Use the <strong class="text-white/80">Generate Config</strong> button on the Tenants page to get ready-to-paste configuration for:</p>
+  <ul class="list-disc ml-6 text-white/55 space-y-1 mb-4">
+    <li><strong class="text-white/80">Continue</strong> (<code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">~/.continue/config.yaml</code>)</li>
+    <li><strong class="text-white/80">OpenCode</strong> (<code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">~/.config/opencode/config.json</code>)</li>
+    <li><strong class="text-white/80">Cursor</strong> (Settings &rarr; Models &rarr; Override Base URL)</li>
+    <li><strong class="text-white/80">Claude Code</strong> (<code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">ANTHROPIC_BASE_URL</code> environment variable)</li>
+    <li><strong class="text-white/80">Open WebUI</strong> (Docker Compose env vars)</li>
+    <li><strong class="text-white/80">Python / Node.js SDK</strong> (code snippets)</li>
+  </ul>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Auto-Routing Setup</h2>
+  <p class="text-white/55 leading-relaxed mb-4">To enable auto-routing for a tenant:</p>
+  <ol class="list-decimal ml-6 text-white/55 space-y-1 mb-4">
+    <li>Go to <strong class="text-white/80">Tenants</strong> &rarr; edit the tenant &rarr; <strong class="text-white/80">Routing</strong> tab</li>
+    <li>Select a <strong class="text-white/80">Classifier Provider</strong> and <strong class="text-white/80">Classifier Model</strong> (a small, fast model like <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">gpt-4o-mini</code>)</li>
+    <li>Configure <strong class="text-white/80">Override Rules</strong> as needed</li>
+    <li>Go to <strong class="text-white/80">Categories</strong> and set a <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">defaultModel</code> for each tier (or apply a preset profile)</li>
+    <li>Send requests with <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">"model": "auto"</code></li>
+  </ol>
+  <p class="text-white/55 leading-relaxed mb-4">See <a href="/model-prism/routing" class="text-[#38bdf8] hover:text-[#7dd3fc]">Routing</a> for a full description of how the routing pipeline works.</p>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Production Deployment</h2>
+  <pre class="bg-[#0d0d14] border border-white/10 rounded-lg p-4 overflow-x-auto text-sm text-white/70 mb-6 font-mono"><code># Build image
+docker build -t model-prism .
+
+# Run
+docker run -d \
+  -p 3000:3000 \
+  -e MONGODB_URI=mongodb://your-mongo:27017/openmodelprism \
+  -e JWT_SECRET=your-long-random-secret \
+  -e ENCRYPTION_KEY=your-32-char-hex-key \
+  -e NODE_ENV=production \
+  model-prism</code></pre>
+  <p class="text-white/55 leading-relaxed mb-4">For air-gapped environments:</p>
+  <pre class="bg-[#0d0d14] border border-white/10 rounded-lg p-4 overflow-x-auto text-sm text-white/70 mb-6 font-mono"><code>docker run -d ... -e OFFLINE=true model-prism</code></pre>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Kubernetes / Helm</h2>
+  <p class="text-white/55 leading-relaxed mb-4">Model Prism is available as a Helm chart for Kubernetes deployments.</p>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-2">Quick Install</h3>
+  <pre class="bg-[#0d0d14] border border-white/10 rounded-lg p-4 overflow-x-auto text-sm text-white/70 mb-6 font-mono"><code>helm install model-prism ./helm \
+  --namespace model-prism \
+  --create-namespace</code></pre>
+  <p class="text-white/55 leading-relaxed mb-4">This deploys Model Prism in <strong class="text-white/80">standalone mode</strong> with bundled MongoDB. Open the setup wizard at your ingress or port-forward:</p>
+  <pre class="bg-[#0d0d14] border border-white/10 rounded-lg p-4 overflow-x-auto text-sm text-white/70 mb-6 font-mono"><code>kubectl port-forward svc/model-prism 3000:80 -n model-prism
+# → http://localhost:3000</code></pre>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-2">Custom Values</h3>
+  <pre class="bg-[#0d0d14] border border-white/10 rounded-lg p-4 overflow-x-auto text-sm text-white/70 mb-6 font-mono"><code>helm install model-prism ./helm \
+  --namespace model-prism \
+  --create-namespace \
+  -f my-values.yaml</code></pre>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-2">Scaled Mode</h3>
+  <p class="text-white/55 leading-relaxed mb-4">For production, run separate control-plane and worker pods:</p>
+  <pre class="bg-[#0d0d14] border border-white/10 rounded-lg p-4 overflow-x-auto text-sm text-white/70 mb-6 font-mono"><code># values-scaled.yaml
+mode: scaled
+
+scaled:
+  control:
+    replicaCount: 2
+  worker:
+    replicaCount: 3
+    autoscaling:
+      enabled: true
+      minReplicas: 3
+      maxReplicas: 20
+      targetCPUUtilization: 65
+
+mongodb:
+  enabled: false
+
+externalMongodb:
+  uri: "mongodb+srv://user:pass@cluster.example.com/modelprism"
+
+ingress:
+  enabled: true
+  className: nginx
+  hosts:
+    - host: prism.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: prism-tls
+      hosts:
+        - prism.example.com</code></pre>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-2">Upgrading</h3>
+  <pre class="bg-[#0d0d14] border border-white/10 rounded-lg p-4 overflow-x-auto text-sm text-white/70 mb-6 font-mono"><code>helm upgrade model-prism ./helm \
+  --namespace model-prism \
+  -f my-values.yaml</code></pre>
+
+  <p class="text-white/55 leading-relaxed mb-4">See the Helm chart <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">values.yaml</code> for all configuration options and troubleshooting.</p>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Useful Commands</h2>
+  <pre class="bg-[#0d0d14] border border-white/10 rounded-lg p-4 overflow-x-auto text-sm text-white/70 mb-6 font-mono"><code>just                    # Show all available commands
+just install            # Install all dependencies
+just dev                # Start backend + frontend in dev mode
+just docker-up          # Start with Docker Compose
+just docker-rebuild     # Rebuild and restart
+just docker-logs        # View application logs
+just mongo-shell        # Open MongoDB shell
+just clean              # Remove everything
+just release 1.0.0      # Tag and push a release</code></pre>
+
+</DocsPage>

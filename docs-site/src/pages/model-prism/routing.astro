@@ -1,0 +1,670 @@
+---
+import DocsPage from '../../layouts/DocsPage.astro';
+---
+
+<DocsPage title="Routing — Model Prism" description="Intelligent model routing pipeline, cost tiers, signal extraction, override rules, LLM classifier, routing categories, and model selection in Open Model Prism.">
+
+  <h1 class="text-3xl font-bold text-white mb-6">Intelligent Model Routing</h1>
+  <p class="text-white/55 leading-relaxed mb-4">Open Model Prism routes incoming requests to the optimal model automatically when clients send <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">"model": "auto"</code>. This document describes the full routing pipeline, all signal sources, override rules, and how classifier context limits are handled.</p>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Overview</h2>
+  <pre class="bg-[#0d0d14] border border-white/10 rounded-lg p-4 overflow-x-auto text-sm text-white/70 mb-6 font-mono"><code>Incoming Request  ("model": "auto")
+        │
+        ▼
+┌───────────────────────┐
+│  Signal Extractor     │  0ms — no LLM call
+│  Token count          │
+│  Keywords / patterns  │
+│  System prompt role   │
+│  FIM / autocomplete   │
+│  Tool-agent detection │
+│  Content type         │
+│  Conversation turns   │
+└──────────┬────────────┘
+           │ signals
+           ▼
+     FIM request detected?
+      YES ─────→ coding_autocomplete, low tier (pre-routed)
+      NO
+     Tool-agent detected?
+      YES ─────→ tool_use, low tier (pre-routed)
+      NO
+           │
+           ▼
+┌───────────────────────┐
+│  Override Rules       │  0ms — rule engine
+│  Vision upgrade       │
+│  Domain gate          │
+│  Security escalation  │
+│  Budget cap           │
+│  Confidence fallback  │
+└──────────┬────────────┘
+           │ category candidate + confidence
+           ▼
+    confidence >= threshold?
+      YES ─────────────────────────────────────→ Model Selector
+      NO
+           │
+           ▼
+┌───────────────────────┐
+│  LLM Classifier       │  ~200-800ms — only called when needed
+│  Prompt summary       │
+│  Context truncation   │
+│  JSON output          │
+│  Fallback: token tier │  (if classifier fails)
+└──────────┬────────────┘
+           │ category + metadata
+           ▼
+┌───────────────────────┐
+│  Session Fill Check   │  (≥75% → +1 tier)
+│  Model Selector       │  0ms
+│  Category -> model    │
+│  Capability matching  │
+│  Context window check │
+│  Context tier upgrade │
+└──────────┬────────────┘
+           │
+           ▼
+       Target Model</code></pre>
+  <p class="text-white/55 leading-relaxed mb-4">The goal is to call the expensive LLM classifier as infrequently as possible. Many requests can be pre-classified from structural signals alone.</p>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Cost Tiers</h2>
+  <p class="text-white/55 leading-relaxed mb-4">Every routing category belongs to one of eight cost tiers. The tier determines which class of model handles the request and its relative cost multiplier.</p>
+  <div class="overflow-x-auto mb-6">
+    <table class="w-full border-collapse">
+      <thead>
+        <tr>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Tier</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Cost Multiplier</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Example Use Case</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">micro</code></td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">0.01x</td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">FIM/autocomplete, tiny models (Llama 3.2-1B)</td>
+        </tr>
+        <tr>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">minimal</code></td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">0.05x</td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Simple tasks (Claude 3 Haiku, Nova Micro)</td>
+        </tr>
+        <tr>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">low</code></td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">0.3x</td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Cost-effective (Claude Haiku 4.5, Nova Lite, Qwen3-32B)</td>
+        </tr>
+        <tr>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">medium</code></td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">1.0x</td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">General purpose (GPT-4o, Mistral Large)</td>
+        </tr>
+        <tr>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">advanced</code></td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">2.5x</td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Specialized (Devstral, Nova Pro, Qwen3 Coder)</td>
+        </tr>
+        <tr>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">high</code></td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">6.0x</td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Complex tasks (Claude Sonnet, GPT-4.1, DeepSeek R1)</td>
+        </tr>
+        <tr>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">ultra</code></td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">15.0x</td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Maximum capability (Claude Opus, GPT-5, o3)</td>
+        </tr>
+        <tr>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">critical</code></td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">18.0x</td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Safety-critical, regulated domains</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="text-white/55 leading-relaxed mb-4">Each tenant maps tiers to specific models via their routing category configuration. A category's <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">defaultModel</code> field overrides the tier default.</p>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-2">Token Thresholds</h3>
+  <p class="text-white/55 leading-relaxed mb-4">Token count boundaries used for tier selection when the classifier is bypassed or as a baseline signal:</p>
+  <div class="overflow-x-auto mb-6">
+    <table class="w-full border-collapse">
+      <thead>
+        <tr>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Tier</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Token Threshold</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">micro</code></td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">&lt; 150 tokens</td>
+        </tr>
+        <tr>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">minimal</code></td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">&lt; 500 tokens</td>
+        </tr>
+        <tr>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">low</code></td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">&lt; 2,000 tokens</td>
+        </tr>
+        <tr>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">medium</code></td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">&lt; 15,000 tokens</td>
+        </tr>
+        <tr>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">alwaysHigh</code></td>
+          <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">&ge; 50,000 tokens (forces high tier regardless of other signals)</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Signal Extraction</h2>
+  <p class="text-white/55 leading-relaxed mb-4">Before the LLM classifier is invoked, structural signals are extracted from the raw request. These signals are cheap (microseconds, no API calls) and often sufficient to make a routing decision.</p>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-2">Token Count</h3>
+  <p class="text-white/55 leading-relaxed mb-4">The total token count of all messages (system + history + current user message) is the strongest single signal for tier selection.</p>
+  <pre class="bg-[#0d0d14] border border-white/10 rounded-lg p-4 overflow-x-auto text-sm text-white/70 mb-6 font-mono"><code>&lt; 150 tokens    ->  micro tier candidate           
+150-500         ->  minimal tier candidate
+500-2 000       ->  low tier candidate
+2 000-15 000    ->  medium tier candidate
+&gt; 15 000        ->  high tier candidate (long_context_processing)
+&gt; 50 000        ->  always high tier (alwaysHigh), regardless of other signals</code></pre>
+  <p class="text-white/55 leading-relaxed mb-4">Token count is estimated offline using a character-based heuristic (~3.5 chars/token, code-aware) — no tokenizer dependency.</p>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-2">System Prompt Role Detection</h3>
+  <p class="text-white/55 leading-relaxed mb-4">The system prompt defines the "mode" of the entire session and overrides most other signals.</p>
+  <pre class="bg-[#0d0d14] border border-white/10 rounded-lg p-4 overflow-x-auto text-sm text-white/70 mb-6 font-mono"><code>"You are a senior security auditor..."     ->  code_security_review, high tier
+"You are a customer support agent..."      ->  customer_support, low tier
+"You are a legal compliance advisor..."    ->  legal_analysis, domain=legal, medium tier min
+"You are a data scientist..."              ->  data_analysis, medium tier</code></pre>
+  <p class="text-white/55 leading-relaxed mb-4">If the system prompt matches a known role pattern, the category is set directly and the LLM classifier is skipped.</p>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-2">Keyword Rules (configurable)</h3>
+  <p class="text-white/55 leading-relaxed mb-4">Keyword rules scan the full message content for domain-specific terms. Each rule specifies:</p>
+  <ul class="list-disc ml-6 text-white/55 space-y-1 mb-4">
+    <li><strong class="text-white/80">keywords</strong> — list of strings to search for (case-insensitive)</li>
+    <li><strong class="text-white/80">match</strong> — <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">any</code> (one keyword sufficient) or <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">all</code> (all must appear)</li>
+    <li><strong class="text-white/80">minMatches</strong> — minimum number of keyword hits required</li>
+    <li><strong class="text-white/80">effect</strong> — what happens: override category, set a minimum tier, set a domain flag</li>
+  </ul>
+  <p class="text-white/55 leading-relaxed mb-4">Built-in examples:</p>
+  <pre class="bg-[#0d0d14] border border-white/10 rounded-lg p-4 overflow-x-auto text-sm text-white/70 mb-6 font-mono"><code>Security Escalation:
+  keywords: [private key, jwt, secret, vulnerability, CVE, exploit, crypto]
+  match: any, minMatches: 2
+  effect: category=code_security_review, tierMin=high
+
+Legal Domain:
+  keywords: [GDPR, NDA, liability, compliance, contract, Article]
+  match: any, minMatches: 1
+  effect: tierMin=medium, domain=legal
+
+Medical Domain:
+  keywords: [diagnosis, ICD, treatment, medication, symptoms, clinical]
+  match: any, minMatches: 1
+  effect: tierMin=medium, domain=medical</code></pre>
+  <p class="text-white/55 leading-relaxed mb-4">Keyword rules are stored in the database and fully editable via the admin UI — no deployment required.</p>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-2">Code Language Detection</h3>
+  <p class="text-white/55 leading-relaxed mb-4">The content is scanned for language-specific patterns to enable capability-based model selection:</p>
+  <pre class="bg-[#0d0d14] border border-white/10 rounded-lg p-4 overflow-x-auto text-sm text-white/70 mb-6 font-mono"><code>Patterns detected:  .sol, pragma solidity, contract   ->  blockchain
+                    def , import , .py                ->  python
+                    SELECT, JOIN, CREATE TABLE         ->  sql
+                    BEGIN CERTIFICATE, -----BEGIN     ->  crypto/certificates
+                    func , go mod, :=                 ->  go</code></pre>
+  <p class="text-white/55 leading-relaxed mb-4">A detected language influences which model is selected within the target tier — for example, routing Python code tasks to <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">codestral</code> or <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">deepseek-coder-v2</code> instead of a general-purpose model of the same tier.</p>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-2">Content Type</h3>
+  <pre class="bg-[#0d0d14] border border-white/10 rounded-lg p-4 overflow-x-auto text-sm text-white/70 mb-6 font-mono"><code>images in messages          ->  vision model required (see Vision Upgrade override)
+tool_calls in messages      ->  function-calling capable model required
+structured output schema    ->  JSON-mode capable model preferred
+streaming: false            ->  no streaming constraint — any model eligible</code></pre>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-2">Conversation Turn Count</h3>
+  <p class="text-white/55 leading-relaxed mb-4">Longer conversations carry accumulated context and often involve follow-up complexity:</p>
+  <pre class="bg-[#0d0d14] border border-white/10 rounded-lg p-4 overflow-x-auto text-sm text-white/70 mb-6 font-mono"><code>turns 1-3   ->  no effect
+turns 4-7   ->  +1 tier upgrade (configurable)
+turns 8+    ->  +1 tier upgrade, long_context_processing flag</code></pre>
+  <p class="text-white/55 leading-relaxed mb-4">Turn-based upgrades are suppressed for categories that are inherently stateless (e.g. <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">summarization_short</code>, <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">translation</code>).</p>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-2">FIM / Autocomplete Detection
+   
+  </h3>
+  <p class="text-white/55 leading-relaxed mb-4">IDE autocomplete and Fill-in-the-Middle (FIM) requests are detected before any other routing step. These requests are latency-sensitive, produce short output, and require zero reasoning — they are routed to the <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">low</code> tier (coder-optimised models like qwen3-coder) without calling the LLM classifier.</p>
+  <p class="text-white/55 leading-relaxed mb-4">Detection uses two signal sources:</p>
+  <ul class="list-disc ml-6 text-white/55 space-y-1 mb-4">
+    <li><strong class="text-white/80">System prompt / first user message patterns</strong> — keywords like "hole filler", "fill in the middle", "FIM", "code completion", "autocomplete", "fill the hole", "inline completion", <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">&#123;&#123;HOLE&#125;&#125;</code>. Both the system prompt and the first user message are checked ( — fixes OpenCode-style clients that embed the instruction in the first user turn)</li>
+    <li><strong class="text-white/80">FIM content tokens</strong> — special tokens embedded in the message content by IDE clients: <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">&lt;fim_prefix&gt;</code>, <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">&lt;fim_suffix&gt;</code>, <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">[PREFIX]</code>, <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">[SUFFIX]</code>, <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">&lt;PRE&gt;</code>, <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">&lt;SUF&gt;</code>, <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">&#123;&#123;HOLE&#125;&#125;</code>, <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">&lt;CURSOR&gt;</code>, etc.</li>
+  </ul>
+  <p class="text-white/55 leading-relaxed mb-4">Supported token formats include StarCoder, DeepSeek, CodeLlama, Mistral/Codestral, SantaCoder, Continue.dev HoleFiller, and generic FIM markers. When detected, the request is pre-routed to category <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">coding_autocomplete</code> with confidence 0.99 and source <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">fim_detection</code>. This bypasses both the override rules and the LLM classifier entirely.</p>
+  <pre class="bg-[#0d0d14] border border-white/10 rounded-lg p-4 overflow-x-auto text-sm text-white/70 mb-6 font-mono"><code>FIM request detected → coding_autocomplete, low tier, conf=0.99
+                       Skip rules, skip classifier
+                       ~0ms routing overhead</code></pre>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-2">Tool-Agent Detection
+   
+  </h3>
+  <p class="text-white/55 leading-relaxed mb-4">Requests from AI coding agents (Claude Code, OpenCode, Cursor, Windsurf) are detected by their system prompt. Tool-agent detection produces a <strong class="text-white/80">hint</strong> (confidence 0.55, below classifier threshold) rather than a final pre-route. This means the LLM classifier still runs for tool-agent requests, properly differentiating between simple tool calls (<code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">tool_use</code>, medium tier) and complex multi-step coding (<code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">swe_agentic</code>, high tier). The default "Coding Agent / SWE" system prompt role sets <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">tierMin: medium</code> as a floor — the classifier escalates complex tasks to higher tiers automatically.</p>
+  <p class="text-white/55 leading-relaxed mb-4">Detected patterns include: "file search specialist", "expert software engineer", "agentic coding", "thoroughly navigating and exploring codebases", "in agent mode", <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">&lt;tool_use_instructions&gt;</code> XML blocks, and tool codec syntax. The hint is used as fallback only if no rule-set match produces a stronger result.</p>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Tier Cap
+   
+  </h2>
+  <p class="text-white/55 leading-relaxed mb-4">When a client explicitly requests a specific model but auto-routing is enabled via <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">model=auto</code>, the routing result is <strong class="text-white/80">capped at the requested model's tier</strong>. If routing would select a more expensive tier, the original model is used instead. This prevents unexpected cost escalation.</p>
+  <p class="text-white/55 leading-relaxed mb-4"><strong class="text-white/80">Exception</strong>: the tier cap does <strong class="text-white/80">not</strong> apply when <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">forceAutoRoute</code> is enabled on the tenant. In that case, the admin explicitly wants the router to pick the best model regardless of what the client requested.</p>
+  <pre class="bg-[#0d0d14] border border-white/10 rounded-lg p-4 overflow-x-auto text-sm text-white/70 mb-6 font-mono"><code>Client requests:   claude-sonnet-4-6 (high tier)
+Routing decides:   claude-opus-4-6 (ultra tier)
+Tier cap applies:  ultra > high → use original model
+overrideApplied:   tier_cap:claude-sonnet-4-6</code></pre>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Override Rules</h2>
+  <p class="text-white/55 leading-relaxed mb-4">After signal extraction, a set of override rules adjusts the routing result. Overrides are applied in order; the first matching override wins (or they can stack — configurable).</p>
+  <div class="overflow-x-auto mb-6">
+    <table class="w-full border-collapse">
+      <thead>
+        <tr>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Override</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Condition</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Effect</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><strong class="text-white/80">Vision Upgrade</strong></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Images present, category doesn't require vision</td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Upgrade tier by 1</td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><strong class="text-white/80">Tool Call Upgrade</strong></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Request contains tool/function definitions</td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Force minimum tier (configurable, default: <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">medium</code>)</td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><strong class="text-white/80">Security Escalation</strong></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Security keywords >= threshold</td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Force <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">code_security_review</code>, <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">high</code> tier</td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><strong class="text-white/80">Domain Gate</strong></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Domain = legal / medical / finance</td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Tier minimum <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">medium</code></td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><strong class="text-white/80">Confidence Fallback</strong></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Classifier confidence &lt; threshold (default 0.65)</td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Force <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">medium</code> tier</td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><strong class="text-white/80">Conversation Turn Upgrade</strong></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Turns >= 4</td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">+1 tier</td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><strong class="text-white/80">Frustration Upgrade</strong></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">User frustration signal detected</td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">+1 tier</td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><strong class="text-white/80">Output Length Upgrade</strong></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Estimated output = long, tier = minimal</td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Upgrade to <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">low</code></td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><strong class="text-white/80">Budget Cap</strong></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Tenant daily spend >= alert threshold</td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Downgrade to configured max tier</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="text-white/55 leading-relaxed mb-4">All overrides are individually toggleable and threshold-adjustable per tenant via the admin UI.</p>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">LLM Classifier</h2>
+  <p class="text-white/55 leading-relaxed mb-4">When pre-routing signals produce a confidence below the configured threshold (default: 0.65), the LLM classifier is called. It receives a structured summary of the request — not the full content — and returns a JSON routing decision.</p>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-2">What the classifier receives</h3>
+  <pre class="bg-[#0d0d14] border border-white/10 rounded-lg p-4 overflow-x-auto text-sm text-white/70 mb-6 font-mono"><code>[System]
+You are a precise model router. Classify the request into one of:
+- code_generation [low] — Examples: write function, implement class, ...
+- data_analysis [medium] — Examples: analyze dataset, find patterns, ...
+- reasoning_formal [high] — Examples: prove theorem, formal logic, ...
+... (all 45 categories with tier and examples)
+
+Reply with ONLY valid JSON, no markdown:
+&#123;"category":"...","confidence":0-1,"complexity":"simple|medium|complex",
+ "has_image":bool,"language":"en|de|other","estimated_output_length":"short|medium|long",
+ "domain":"general|legal|medical|finance|tech|science","conversation_turn":int,
+ "user_frustration_signal":bool,"cost_tier":"micro|minimal|low|medium|advanced|high|ultra|critical","reasoning":"..."&#125;
+
+[User]
+[System]: You are a coding assistant...  (truncated to 500 chars)
+[user]: Analyse this repository and identify security vulnerabilities
+[CONTEXT_SIGNALS: tokens=82000, languages=[python,yaml], security_keywords=3, turns=1]</code></pre>
+  <p class="text-white/55 leading-relaxed mb-4">Note that context signals are injected as metadata — the classifier never sees the full file contents. This keeps the classifier call small and fast regardless of how large the actual payload is.</p>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-2">Classifier Context Limit Handling</h3>
+  <p class="text-white/55 leading-relaxed mb-4">Different classifier models have vastly different context windows:</p>
+  <div class="overflow-x-auto mb-6">
+    <table class="w-full border-collapse">
+      <thead>
+        <tr>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Model</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Context window</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Recommended strategy</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">gpt-4o-mini</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">128,000 tokens</td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">truncate</code></td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">claude-haiku-4-5</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">200,000 tokens</td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">truncate</code></td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">llama-3.1-8b</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">8,192 tokens</td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">metadata_only</code></td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">gemini-flash-2.0</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">1,000,000 tokens</td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">truncate</code></td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">phi-4</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">16,384 tokens</td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">summary</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="text-white/55 leading-relaxed mb-4">Three strategies are supported:</p>
+  <p class="text-white/55 leading-relaxed mb-4"><strong class="text-white/80"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">metadata_only</code></strong> — the classifier never sees message content, only extracted metadata. Safest for small-context models (&lt; 16k tokens). Lowest classification quality for ambiguous prompts.</p>
+  <p class="text-white/55 leading-relaxed mb-4"><strong class="text-white/80"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">truncate</code></strong> — the last user message and a truncated system prompt are included up to <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">contextLimit x 0.6</code> tokens (leaving headroom for the category list and output). Best trade-off for most models.</p>
+  <p class="text-white/55 leading-relaxed mb-4"><strong class="text-white/80"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">summary</code></strong> — a cheap, fast model first generates a 200-token summary of the full context, then the classifier receives that summary. Highest quality for long inputs, but adds one extra API hop.</p>
+  <p class="text-white/55 leading-relaxed mb-4">The strategy and context limit are configured per tenant in the Routing Config UI.</p>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Smart Classifier Fallback
+   
+  </h2>
+  <p class="text-white/55 leading-relaxed mb-4">When all configured classifiers fail (rate limits, timeouts, network errors, invalid JSON response), the router no longer throws an error and falls back to the tenant's default model (which is often the most expensive). Instead, it selects a tier based on the request's token count:</p>
+  <pre class="bg-[#0d0d14] border border-white/10 rounded-lg p-4 overflow-x-auto text-sm text-white/70 mb-6 font-mono"><code>&le; 150 tokens     →  micro           
+&le; 500 tokens     →  minimal
+&le; 2 000 tokens   →  low
+&le; 15 000 tokens  →  medium
+&le; 50 000 tokens  →  high
+&gt; 50 000 tokens  →  ultra</code></pre>
+  <p class="text-white/55 leading-relaxed mb-4">This prevents cost spikes when the classifier is temporarily unavailable. The fallback is logged as <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">overrideApplied: classifier_fallback</code> with <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">reason: token_fallback (...)</code> for full observability.</p>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Session Context-Fill Routing
+   
+  </h2>
+  <p class="text-white/55 leading-relaxed mb-4">After each successful request, the gateway caches the <strong class="text-white/80">context fill percentage</strong> (<code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">inputTokens / contextWindow</code>) per session (30-minute TTL, in-memory). On the next request in the same session, if the previous fill was &ge; 75%, the router automatically steps up one tier so the request lands on a model with sufficient headroom before a context overflow occurs.</p>
+  <pre class="bg-[#0d0d14] border border-white/10 rounded-lg p-4 overflow-x-auto text-sm text-white/70 mb-6 font-mono"><code>Previous request: 150k tokens / 200k context = 75% fill
+Next request:     low tier → medium tier (proactive upgrade)
+                  overrideApplied: session_context_upgrade(75%)</code></pre>
+  <p class="text-white/55 leading-relaxed mb-4">The threshold is configurable per tenant via <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">routing.sessionFillUpgradeThreshold</code> (default: 0.75). The previous fill percentage is stored as <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">prevSessionFillPct</code> in routing signals for post-hoc analysis.</p>
+  <p class="text-white/55 leading-relaxed mb-4">Session fill state survives pod restarts — on a cache miss the gateway recovers fill state from the last successful <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">RequestLog</code> entry for the session. The pre-flight context check also uses a 10% safety margin: when estimated fill &ge; 90% of the context window, the router proactively switches to a larger model before overflow occurs.</p>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-2">Message Truncation as Last Resort
+   
+  </h3>
+  <p class="text-white/55 leading-relaxed mb-4">When context overflows and no larger model is available (session has grown to the platform limit), the gateway truncates old conversation turns rather than returning an error. Strategy: keep the system prompt and most recent turns, drop oldest turns until the payload fits within 85% of the context window, inject a synthetic system note so the model knows history was cut. This applies to both proactive pre-flight detection and reactive overflow paths.</p>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Cost Mode &amp; Tier Boost
+   
+  </h2>
+  <p class="text-white/55 leading-relaxed mb-4">After all classification and override rules have been applied, two final adjustments can shift the resolved tier:</p>
+  <p class="text-white/55 leading-relaxed mb-4"><strong class="text-white/80">Cost Mode</strong> — configured per rule set. Three options:</p>
+  <ul class="list-disc pl-6 space-y-1 text-white/55 text-sm mb-4">
+    <li><strong class="text-white/80">Economy (−1 tier)</strong> — step down one tier to save cost</li>
+    <li><strong class="text-white/80">Balanced</strong> — no adjustment (default)</li>
+    <li><strong class="text-white/80">Quality (+1 tier)</strong> — step up one tier for better output quality</li>
+  </ul>
+  <p class="text-white/55 leading-relaxed mb-4"><strong class="text-white/80">Tier Boost</strong> — an explicit offset (−2 to +2) that stacks with cost mode. For example, quality (+1) combined with tier boost (+1) yields a total shift of +2 tiers. Configured per rule set in the Routing Config UI.</p>
+  <pre class="bg-[#0d0d14] border border-white/10 rounded-lg p-4 overflow-x-auto text-sm text-white/70 mb-6 font-mono"><code>Classifier result:  coding_medium → medium tier
+Cost mode (quality): medium → advanced (+1)
+Tier boost (+1):     advanced → high (+1)
+Final tier:          high
+overrideApplied:     cost_quality+tier_boost:+1</code></pre>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Test Route (Dry-Run)
+   
+  </h2>
+  <p class="text-white/55 leading-relaxed mb-4">The <strong class="text-white/80">Test Route</strong> tab in Routing Config lets you dry-run any prompt through the full routing pipeline and see a step-by-step trace of every decision point:</p>
+  <ol class="list-decimal pl-6 space-y-1 text-white/55 text-sm mb-4">
+    <li>Signal extraction (tokens, images, tool calls, domains, languages)</li>
+    <li>FIM / tool-agent fast-path detection</li>
+    <li>Rule-set pre-routing (which keyword rules and system prompt roles matched)</li>
+    <li>Classifier decision (use or skip, and why)</li>
+    <li>Classifier output (category, tier, confidence, recommended model, reasoning)</li>
+    <li>Post-classifier tier enforcement (rule-set floor applied?)</li>
+    <li>Tenant override rules (which triggered, what changed)</li>
+    <li>Cost mode adjustment</li>
+    <li>Tier boost adjustment</li>
+    <li>Model selection (method, final model, provider)</li>
+  </ol>
+  <p class="text-white/55 leading-relaxed mb-4">Each step shows whether it changed the result (green) or was a no-op (gray), with detailed JSON data. Optionally enable <strong class="text-white/80">"Call real classifier"</strong> to make an actual LLM call for production-identical results (costs tokens).</p>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Synthetic Tests
+    <span class="ml-2 inline-block text-[10px] font-semibold px-1.5 py-0.5 rounded bg-purple-500/15 text-purple-400 border border-purple-500/25 align-middle">AI</span>
+   
+  </h2>
+  <p class="text-white/55 leading-relaxed mb-4">Synthetic Tests let you automatically evaluate your routing configuration quality using AI-generated test suites:</p>
+  <ol class="list-decimal pl-6 space-y-1 text-white/55 text-sm mb-4">
+    <li><strong class="text-white/80">Create a test suite</strong> — name it and optionally scope to a specific category</li>
+    <li><strong class="text-white/80">Generate test prompts</strong> — choose any available model to generate realistic prompts with expected categories and tiers</li>
+    <li><strong class="text-white/80">Run the suite</strong> — execute all test prompts against the current routing config (pre-routing only, no LLM calls, no cost)</li>
+    <li><strong class="text-white/80">AI Evaluate</strong> — choose any available model to analyze the results and get a routing quality score (0–100) plus actionable suggestions</li>
+  </ol>
+  <p class="text-white/55 leading-relaxed mb-4">The evaluation provides two types of recommendations: <strong class="text-white/80">quality suggestions</strong> (how to improve routing accuracy) and <strong class="text-white/80">cost suggestions</strong> (how to reduce spending). Test runs are persisted and can be compared over time to track routing improvements.</p>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Routing Categories</h2>
+  <p class="text-white/55 leading-relaxed mb-4">Open Model Prism ships with 45 built-in routing categories across eight cost tiers. Categories are stored in MongoDB and fully editable — add, remove, rename, or adjust defaults without code changes.</p>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-2">Minimal tier (simple, fast, cheap)</h3>
+  <div class="overflow-x-auto mb-6">
+    <table class="w-full border-collapse">
+      <thead><tr><th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Key</th><th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Description</th></tr></thead>
+      <tbody>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">smalltalk_simple</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Greetings, casual conversation</td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">translation</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Language translation</td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">format_convert</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Convert between formats (Markdown &rarr; HTML, JSON &rarr; YAML, etc.)</td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">brainstorming</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Quick idea generation, simple lists</td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">proofreading</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Grammar and spelling correction</td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">summarization_short</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Short text summarisation (&lt; 2 pages)</td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">coding_autocomplete</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">FIM / autocomplete — IDE inline completions (auto-detected, pre-routed)</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-2">Low tier (standard tasks)</h3>
+  <div class="overflow-x-auto mb-6">
+    <table class="w-full border-collapse">
+      <thead><tr><th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Key</th><th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Description</th></tr></thead>
+      <tbody>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">summarization_long</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Long document summarisation</td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">instruction_following</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Step-by-step task completion</td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">function_calling</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Tool use, function call generation</td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">qa_simple</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Simple factual Q&amp;A</td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">classification_extraction</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Entity extraction, labelling</td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">creative_writing</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Stories, poems, marketing copy</td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">sentiment_analysis</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Tone and sentiment detection</td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">devops_infrastructure</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Infrastructure scripts, CI/CD, Docker, Kubernetes</td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">qa_testing</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Test case generation, QA scenarios</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-2">Medium tier (complex tasks)</h3>
+  <div class="overflow-x-auto mb-6">
+    <table class="w-full border-collapse">
+      <thead><tr><th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Key</th><th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Description</th></tr></thead>
+      <tbody>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">code_generation</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Write code in any language</td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">code_review</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Review and critique code</td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">code_debugging</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Identify and fix bugs</td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">data_analysis</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Analyse datasets, find patterns</td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">api_integration</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">API client code, integration logic</td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">long_context_processing</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Tasks requiring large context windows (&gt; 15k tokens)</td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">stem_science</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Science, engineering, technical calculations</td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">question_answering_complex</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Multi-step reasoning Q&amp;A</td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">customer_support</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Support ticket handling, escalation</td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">document_understanding</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">PDF, contract, or report comprehension</td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">research_synthesis</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Summarise multiple sources</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-2">High tier (hardest tasks)</h3>
+  <div class="overflow-x-auto mb-6">
+    <table class="w-full border-collapse">
+      <thead><tr><th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Key</th><th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Description</th></tr></thead>
+      <tbody>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">reasoning_formal</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Mathematical proofs, formal logic</td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">code_security_review</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Security audit, vulnerability analysis</td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">swe_agentic</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Agentic software engineering, multi-step coding</td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">legal_analysis</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Legal document analysis, compliance</td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">medical_analysis</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Clinical/medical content (escalated by domain gate)</td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">system_design</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Architecture, high-level design docs</td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">multimodal_analysis</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Image + text combined analysis</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Preset Profiles</h2>
+  <p class="text-white/55 leading-relaxed mb-4">Preset profiles are named bundles of routing categories. When applied, they automatically assign the best available model (ranked by benchmark score for the category's primary capability axis) to each category in the bundle.</p>
+  <p class="text-white/55 leading-relaxed mb-4">The assignment is <strong class="text-white/80">non-destructive</strong>: categories that already have a <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">defaultModel</code> configured are skipped.</p>
+  <div class="overflow-x-auto mb-6">
+    <table class="w-full border-collapse">
+      <thead><tr><th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Profile</th><th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Category focus</th></tr></thead>
+      <tbody>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">software_development</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Code generation, debugging, refactoring, security review, DevOps</td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">customer_support</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">FAQ, sentiment analysis, summarisation, instruction following</td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">research_analysis</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Data analysis, STEM, long context, formal reasoning</td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">creative_content</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Brainstorming, copywriting, proofreading, format conversion</td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">data_operations</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">SQL, data transformation, API integration, QA testing</td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">agentic_workflows</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Agentic SWE, function calling, multi-step tool use</td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">general_all</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">All 45 categories — full coverage</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="text-white/55 leading-relaxed mb-4">Profiles are selectable in the <strong class="text-white/80">Setup Wizard</strong> (step 2 of 4) and re-applicable at any time via <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">POST /api/prism/admin/categories/apply-preset</code>.</p>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Model Selection</h2>
+  <p class="text-white/55 leading-relaxed mb-4">Once a category and tier are determined, the model is selected as follows:</p>
+  <ol class="list-decimal ml-6 text-white/55 space-y-1 mb-4">
+    <li><strong class="text-white/80">Category <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">defaultModel</code></strong> — if set, use it directly (highest priority)</li>
+    <li><strong class="text-white/80">Benchmark-weighted price-performance</strong> — within the target tier, all eligible models are scored using a weighted benchmark formula that considers the category's primary capability axes, combined with cost (see below)</li>
+    <li><strong class="text-white/80">Tenant routing <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">defaultModel</code></strong> — fallback if no category default and no benchmark data</li>
+    <li><strong class="text-white/80">Context window check</strong> — if the selected model's context window is smaller than the estimated token count, escalate to the next larger model (<code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">findLargerContextModel</code>)</li>
+    <li><strong class="text-white/80">Context-aware tier upgrade</strong> — if <em>no</em> model in the selected tier can fit the estimated input tokens, the router automatically steps up through tiers (minimal &rarr; low &rarr; medium &rarr; high) until a model with sufficient context window is found. Logged as <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">context_tier_upgrade_&lt;tier&gt;</code> in the <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">override_applied</code> field.</li>
+  </ol>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-2">Benchmark-Weighted Routing</h3>
+  <p class="text-white/55 leading-relaxed mb-4">Instead of simply picking the cheapest model in a tier, Model Prism calculates a <strong class="text-white/80">price-performance score</strong> for each eligible model. The score combines benchmark quality with cost:</p>
+  <pre class="bg-[#0d0d14] border border-white/10 rounded-lg p-4 overflow-x-auto text-sm text-white/70 mb-6 font-mono"><code>quality = (w_intelligence * intelligence) + (w_coding * coding) + (w_math * math) + (w_speed * speed)
+cost    = inputPer1M + outputPer1M
+score   = quality / cost^exponent</code></pre>
+  <p class="text-white/55 leading-relaxed mb-4">The benchmark weights are determined by the routing category:</p>
+  <div class="overflow-x-auto mb-6">
+    <table class="w-full border-collapse">
+      <thead>
+        <tr>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Category type</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Intelligence</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Coding</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Math</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Speed</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">code_*</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">0.15</td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">0.55</td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">0.20</td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">0.10</td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">reasoning_*</code>, <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">math</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">0.25</td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">0.10</td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">0.55</td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">0.10</td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">summarization_*</code>, <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">translation</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">0.20</td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">0.05</td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">0.05</td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">0.70</td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Default (all others)</td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">0.40</td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">0.20</td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">0.20</td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">0.20</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="text-white/55 leading-relaxed mb-4">This means a coding task will strongly prefer models with high coding benchmarks, while a summarization task will prefer fast models — even within the same cost tier.</p>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-2">Cost Mode</h3>
+  <p class="text-white/55 leading-relaxed mb-4">The <strong class="text-white/80">cost mode</strong> setting controls the balance between output quality and cost savings. It affects both <strong class="text-white/80">tier shifting</strong> (moving requests up or down a tier) and <strong class="text-white/80">model ranking within a tier</strong> (how aggressively cost is penalized in the price-performance formula).</p>
+  <div class="overflow-x-auto mb-6">
+    <table class="w-full border-collapse">
+      <thead>
+        <tr>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Mode</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Cost exponent</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Tier shift</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Effect</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">economy</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">2.0</td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Step down one tier</td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Maximize savings — heavily penalizes expensive models, prefers cheapest options</td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">balanced</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">1.0</td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">No shift (default)</td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Best price-performance ratio — equal weighting of quality and cost</td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">quality</code></td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">0.3</td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Step up one tier</td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Maximize output quality — cost is secondary, prefers highest-scoring models</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="text-white/55 leading-relaxed mb-4">The cost exponent controls how much cost matters in the <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">quality / cost^exponent</code> formula. A higher exponent makes expensive models score much lower. At exponent 0.3 (quality mode), a model that costs 10x more only gets a 2x penalty — benchmark scores dominate the ranking.</p>
+  <p class="text-white/55 leading-relaxed mb-4">Cost mode is configured per rule set in the <strong class="text-white/80">Routing Config</strong> UI under "Cost Optimization Mode".</p>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-2">Budget Guard Integration</h3>
+  <p class="text-white/55 leading-relaxed mb-4">The <strong class="text-white/80">budget guard</strong> can automatically override the cost mode when spend approaches a configured threshold. When the guard activates:</p>
+  <ul class="list-disc ml-6 text-white/55 space-y-1 mb-4">
+    <li><strong class="text-white/80">Auto-routed requests</strong> — the cost mode is overridden to <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">economy</code>, which steps down one tier and heavily penalizes expensive models within the remaining tier. Results stay reasonable because the best cheap models are selected by benchmark score.</li>
+    <li><strong class="text-white/80">Explicit model requests</strong> — requests targeting a blocked tier (e.g. <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">high</code>) are still rejected with a <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">429</code> error.</li>
+  </ul>
+  <p class="text-white/55 leading-relaxed mb-4">This means auto-routed traffic degrades gracefully instead of being cut off entirely. Configure the guard cost mode override per tenant under <strong class="text-white/80">Budget Guard &rarr; Auto-Route Cost Mode Override</strong>.</p>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Response Enrichment</h2>
+  <p class="text-white/55 leading-relaxed mb-4">Every auto-routed response includes routing metadata in the response body:</p>
+  <pre class="bg-[#0d0d14] border border-white/10 rounded-lg p-4 overflow-x-auto text-sm text-white/70 mb-6 font-mono"><code>&#123;
+  "choices": [...],
+  "auto_routing": &#123;
+    "category": "code_security_review",
+    "confidence": 0.91,
+    "complexity": "complex",
+    "cost_tier": "high",
+    "model_id": "claude-opus-4-6",
+    "override_applied": "security_escalation",
+    "analysis_time_ms": 312,
+    "domain": "tech",
+    "reasoning": "Request contains 3 security-related keyword patterns and 82k token codebase"
+  &#125;,
+  "cost_info": &#123;
+    "actual_cost": 0.0187,
+    "baseline_cost": 0.0210,
+    "saved": 0.0023,
+    "input_tokens": 82140,
+    "output_tokens": 1820
+  &#125;
+&#125;</code></pre>
+  <p class="text-white/55 leading-relaxed mb-4">If a context fallback occurred (model was upgraded due to context overflow), a <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">context_fallback</code> field is also included:</p>
+  <pre class="bg-[#0d0d14] border border-white/10 rounded-lg p-4 overflow-x-auto text-sm text-white/70 mb-6 font-mono"><code>"context_fallback": &#123;
+  "original_model": "claude-sonnet-4-6",
+  "fallback_model": "claude-opus-4-6",
+  "reason": "context_overflow"
+&#125;</code></pre>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Provider Fallback Chains
+   
+  </h2>
+  <p class="text-white/55 leading-relaxed mb-4">When a provider returns an error, Model Prism can automatically fail over to an alternative provider using <strong class="text-white/80">fallback chains</strong>.</p>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-2">Circuit Breaker</h3>
+  <p class="text-white/55 leading-relaxed mb-4">Each provider is monitored with a circuit breaker that transitions through three states:</p>
+  <pre class="bg-[#0d0d14] border border-white/10 rounded-lg p-4 overflow-x-auto text-sm text-white/70 mb-6 font-mono"><code>CLOSED      normal operation — all requests forwarded
+    ↓ error threshold exceeded
+OPEN        provider marked down — requests skip to next in chain
+    ↓ cooldown period elapsed
+HALF_OPEN   probe requests sent — if successful, return to CLOSED</code></pre>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-2">Per-Tenant Configuration</h3>
+  <p class="text-white/55 leading-relaxed mb-4">Fallback chains are configurable per tenant, per model pattern or using a wildcard <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">'*'</code> to match all models. When a provider error occurs, the gateway automatically retries with the next provider in the chain.</p>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-2">Context-Aware Fallback</h3>
+  <p class="text-white/55 leading-relaxed mb-4">On context overflow errors, the fallback system automatically upgrades to a larger context model. The pre-flight context check uses the model registry as a fallback source for context window data when provider metadata is unavailable.</p>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-2">Webhook Notifications</h3>
+  <p class="text-white/55 leading-relaxed mb-4">When a provider transitions to <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">OPEN</code> (down), a <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">provider_down</code> webhook event is fired to notify administrators.</p>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">A/B Testing for Routing
+   
+  </h2>
+  <p class="text-white/55 leading-relaxed mb-4">Model Prism supports <strong class="text-white/80">A/B testing experiments</strong> to compare routing strategies or model variants under real production traffic.</p>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-2">Experiment Model</h3>
+  <p class="text-white/55 leading-relaxed mb-4">Each experiment defines weighted variants. Traffic is distributed across variants using <strong class="text-white/80">consistent session-based hashing</strong> (SHA-256) so that the same session always hits the same variant.</p>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-2">Per-Variant Metrics</h3>
+  <p class="text-white/55 leading-relaxed mb-4">Each variant tracks:</p>
+  <ul class="list-disc ml-6 text-white/55 space-y-1 mb-4">
+    <li><strong class="text-white/80">Requests</strong> — total request count</li>
+    <li><strong class="text-white/80">Tokens</strong> — input and output token totals</li>
+    <li><strong class="text-white/80">Cost</strong> — actual cost per variant</li>
+    <li><strong class="text-white/80">Errors</strong> — error count and rate</li>
+    <li><strong class="text-white/80">Quality</strong> — automated quality score (see below)</li>
+  </ul>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-2">Statistical Analysis</h3>
+  <p class="text-white/55 leading-relaxed mb-4">Experiments use a <strong class="text-white/80">z-test</strong> for statistical significance analysis, allowing you to determine when a variant is performing reliably better or worse than the control.</p>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-2">Admin API</h3>
+  <p class="text-white/55 leading-relaxed mb-4">Experiments are managed via <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">/api/prism/admin/experiments/</code>.</p>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Automated Quality Scoring
+   
+  </h2>
+  <p class="text-white/55 leading-relaxed mb-4">Every request receives an automated <strong class="text-white/80">quality score</strong> from 0 to 100, computed from six signals:</p>
+  <div class="overflow-x-auto mb-6">
+    <table class="w-full border-collapse">
+      <thead>
+        <tr>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Signal</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Max Points</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Completeness</td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">25</td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Whether the response fully addresses the prompt</td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Length adequacy</td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">20</td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Response length appropriate for the task complexity</td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Refusal detection</td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">20</td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Penalizes unnecessary refusals or safety over-triggers</td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Error indicators</td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">15</td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Detects error patterns, apologies, or failure admissions</td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Language consistency</td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">10</td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Response language matches the request language</td></tr>
+        <tr><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Format compliance</td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">10</td><td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">Adherence to requested output format (JSON, Markdown, etc.)</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+</DocsPage>

@@ -1,0 +1,56 @@
+apiVersion: v2
+name: model-prism
+description: >-
+  Open Model Prism — multi-tenant, OpenAI-API-compatible LLM gateway.
+  Connects any provider (OpenAI, Anthropic, Bedrock, Azure, Ollama, vLLM,
+  OpenRouter) through a single endpoint. Intelligent auto-routing classifies
+  prompts and selects the optimal model by task type and cost, with real-time
+  cost tracking, per-tenant API keys, rate limits, budgets, and a full admin UI.
+  Deploy as a single standalone pod or scale horizontally with separate
+  control-plane and autoscaling worker pods.
+type: application
+version: 0.0.1
+appVersion: "0.0.1"
+kubeVersion: ">=1.25.0-0"
+home: https://github.com/weisser-dev/open-model-prism
+icon: https://raw.githubusercontent.com/weisser-dev/open-model-prism/main/docs/logo.svg
+sources:
+  - https://github.com/weisser-dev/open-model-prism
+annotations:
+  artifacthub.io/license: Apache-2.0
+  artifacthub.io/prerelease: "false"
+  artifacthub.io/changes: |
+    - kind: added
+      description: "Initial open-source release — Apache 2.0, no license key required"
+  artifacthub.io/links: |
+    - name: Documentation
+      url: https://github.com/weisser-dev/open-model-prism/wiki
+    - name: Source
+      url: https://github.com/weisser-dev/open-model-prism
+    - name: Issues
+      url: https://github.com/weisser-dev/open-model-prism/issues
+  artifacthub.io/maintainers: |
+    - name: weisser-dev
+      url: https://github.com/weisser-dev
+  artifacthub.io/operator: "false"
+  artifacthub.io/containsSecurityUpdates: "false"
+  artifacthub.io/images: |
+    - name: model-prism
+      image: ghcr.io/weisser-dev/open-model-prism:0.0.1
+keywords:
+  - llm
+  - ai
+  - gateway
+  - openai
+  - open-model-prism
+  - multi-tenant
+  - proxy
+  - kubernetes
+maintainers:
+  - name: weisser-dev
+    url: https://github.com/weisser-dev
+dependencies:
+  - name: mongodb
+    version: "15.*"
+    repository: https://charts.bitnami.com/bitnami
+    condition: mongodb.enabled

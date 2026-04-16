@@ -1,0 +1,230 @@
+---
+import DocsPage from '../../layouts/DocsPage.astro';
+---
+
+<DocsPage title="Operations Guide — Model Prism" description="Deployment modes, Docker Compose setup, scaled deployments, load balancer configuration, MongoDB, security hardening, environment variables, and upgrades for Open Model Prism.">
+
+  <h1 class="text-3xl font-bold text-white mb-6">Operations Guide</h1>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Deployment Modes</h2>
+  <p class="text-white/55 leading-relaxed mb-4">Open Model Prism supports three deployment modes controlled by the <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">NODE_ROLE</code> environment variable:</p>
+  <div class="overflow-x-auto mb-6">
+    <table class="w-full border-collapse">
+      <thead>
+        <tr>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Mode</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">NODE_ROLE</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        {[
+          ['Full (default)', 'full', 'Admin UI + Gateway in one pod. Use for dev and small deployments (<50 users).'],
+          ['Control Plane', 'control', 'Admin API + Frontend only. No gateway routes served.'],
+          ['Worker', 'worker', 'Gateway only (/api/:tenant/v1/*). Scales horizontally.'],
+        ].map(([mode, role, desc]) => (
+          <tr>
+            <td class="border-t border-white/10 px-4 py-2 text-white/70 text-sm font-medium">{mode}</td>
+            <td class="border-t border-white/10 px-4 py-2 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">{role}</code></td>
+            <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">{desc}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Single-Pod Deployment (default)</h2>
+  <pre class="bg-[#0d0d14] border border-white/10 rounded-lg p-4 overflow-x-auto text-sm text-white/70 mb-4 font-mono"><code>docker compose up -d</code></pre>
+  <p class="text-white/55 leading-relaxed mb-6">Everything runs in one container. Good for local development and small teams (&lt;50 developers). MongoDB starts with <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">--replSet rs0</code> to enable Change Streams. If unavailable, the system falls back to polling (15-second interval) automatically.</p>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Scaled Deployment (Control Plane + Workers)</h2>
+  <pre class="bg-[#0d0d14] border border-white/10 rounded-lg p-4 overflow-x-auto text-sm text-white/70 mb-4 font-mono"><code>docker compose -f docker-compose.yml -f docker-compose.scaled.yml up -d --scale worker=3</code></pre>
+  <ul class="list-disc ml-6 text-white/55 space-y-1 mb-4">
+    <li><strong class="text-white/80">1x Control Plane</strong> (port 3000) — Admin UI, Admin API, setup wizard, authentication</li>
+    <li><strong class="text-white/80">N× Worker Pods</strong> — Gateway only, handling all <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">/api/:tenant/v1/*</code> traffic</li>
+    <li>Load balancer routes gateway traffic to workers and admin traffic to the control plane</li>
+  </ul>
+  <p class="text-white/55 leading-relaxed mb-4">All state is in MongoDB — worker pods are fully stateless and can be added or removed at any time.</p>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-3">Capacity Planning</h3>
+  <div class="overflow-x-auto mb-6">
+    <table class="w-full border-collapse">
+      <thead>
+        <tr>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Team Size</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Workers</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Estimated Load</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        {[
+          ['1–20 developers', '1 (full mode)', '~300 req/min', 'Single pod is fine'],
+          ['20–80 developers', '2–3 workers', '600–2,400 req/min', '--scale worker=2'],
+          ['80–200 developers', '4–6 workers', '2,400–6,000 req/min', 'Add nginx in front'],
+          ['200+ developers', '8+ workers', '6,000+ req/min', 'Consider a dedicated MongoDB cluster'],
+        ].map(([size, workers, load, notes]) => (
+          <tr>
+            <td class="border-t border-white/10 px-4 py-2 text-white/70 text-sm">{size}</td>
+            <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">{workers}</td>
+            <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">{load}</td>
+            <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">{notes}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Load Balancer Configuration</h2>
+  <p class="text-white/55 leading-relaxed mb-3">Example nginx upstream config for a scaled deployment:</p>
+  <pre class="bg-[#0d0d14] border border-white/10 rounded-lg p-4 overflow-x-auto text-sm text-white/70 mb-6 font-mono"><code>upstream omp_workers &#123;
+    server worker1:3000;
+    server worker2:3000;
+    server worker3:3000;
+&#125;
+
+upstream omp_control &#123;
+    server control:3000;
+&#125;
+
+server &#123;
+    listen 443 ssl;
+    server_name omp.example.com;
+
+    location /api/ &#123;
+        location ~ ^/api/[^/]+/v1/ &#123;
+            proxy_pass http://omp_workers;
+            proxy_http_version 1.1;
+            proxy_set_header Connection "";
+        &#125;
+        location /api/prism/admin/ &#123;
+            proxy_pass http://omp_control;
+        &#125;
+        location /api/prism/auth/ &#123;
+            proxy_pass http://omp_control;
+        &#125;
+    &#125;
+
+    location / &#123;
+        proxy_pass http://omp_control;
+    &#125;
+&#125;</code></pre>
+  <p class="text-white/55 leading-relaxed mb-6">Health check endpoint for load balancer probes: <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">GET /health</code></p>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Security Hardening</h2>
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-3">Credentials and Secrets</h3>
+  <ul class="list-disc ml-6 text-white/55 space-y-1 mb-4">
+    <li><strong class="text-white/80">Provider credentials:</strong> encrypted at rest with AES-256-GCM</li>
+    <li><strong class="text-white/80">Tenant API keys:</strong> SHA-256 hashed — never stored in plaintext</li>
+    <li><strong class="text-white/80">Admin passwords:</strong> bcrypt</li>
+  </ul>
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-3">Network</h3>
+  <ul class="list-disc ml-6 text-white/55 space-y-1 mb-4">
+    <li>Terminate HTTPS at the load balancer. Model Prism speaks HTTP internally.</li>
+    <li>Set <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">CORS_ORIGINS</code> to specific domains (not <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">*</code>) in production</li>
+    <li>Firewall the <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">/metrics</code> endpoint — it is a Prometheus scrape target for internal monitoring only</li>
+  </ul>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Environment Variables</h2>
+  <div class="overflow-x-auto mb-6">
+    <table class="w-full border-collapse">
+      <thead>
+        <tr>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Variable</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Default</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        {[
+          ['NODE_ROLE', 'full', 'full / control / worker'],
+          ['MONGO_URI', 'mongodb://localhost:27017/openmodelprism', 'MongoDB connection string'],
+          ['JWT_SECRET', '(required)', 'JWT signing secret — 32+ characters'],
+          ['ENCRYPTION_KEY', '(required)', '32-byte hex string for AES-256-GCM'],
+          ['PORT', '3000', 'Server listen port'],
+          ['CORS_ORIGINS', '*', 'Comma-separated list of allowed origins'],
+          ['OFFLINE', 'false', 'true disables all outbound internet calls'],
+          ['LOG_LEVEL', 'info', 'debug / info / warn / error'],
+          ['NODE_ENV', 'development', 'production enables JSON structured logs'],
+        ].map(([key, def, desc]) => (
+          <tr>
+            <td class="border-t border-white/10 px-4 py-2 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">{key}</code></td>
+            <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">{def}</td>
+            <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">{desc}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">System Dashboard</h2>
+  <p class="text-white/55 leading-relaxed mb-4">Available at <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">/system</code> (admin and maintainer roles only). Shows the live state of all pods registered with the shared MongoDB: pod list with role badges, per-pod resource metrics (heap, RSS, CPU), per-pod request rate, 60-minute traffic chart, and provider error rates.</p>
+  <p class="text-white/55 leading-relaxed mb-4">Pod heartbeats are written to MongoDB every 30 seconds with a 90-second TTL. Pods that stop sending heartbeats disappear automatically.</p>
+  <p class="text-white/55 leading-relaxed mb-6"><strong class="text-white/80">Runtime controls</strong> (apply immediately, no restart): log level, prompt logging toggle, file logging configuration.</p>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Data Maintenance</h2>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-3">Prompt Retention</h3>
+  <p class="text-white/55 leading-relaxed mb-4">
+    Model Prism can automatically strip prompt content from request logs after a configurable retention period. This keeps analytics metadata (tokens, cost, model, latency) intact while discarding the raw prompt text — useful for privacy compliance and DB size management.
+  </p>
+  <p class="text-white/55 leading-relaxed mb-4">
+    Configure in <strong class="text-white/80">Admin UI → Settings → Prompt Logging</strong>. Set <strong class="text-white/80">Prompt Retention</strong> to the number of hours after which prompt content is automatically cleared (default: 48 h). Set to 0 to disable automatic cleanup.
+  </p>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-3">Manual Log Shrink (Data Maintenance)</h3>
+  <p class="text-white/55 leading-relaxed mb-4">
+    The <strong class="text-white/80">Data Maintenance</strong> panel in <strong class="text-white/80">Admin UI → Settings</strong> lets you manually strip prompt content from logs older than a chosen threshold. Metadata is preserved — only the raw prompt and completion text are cleared.
+  </p>
+  <p class="text-white/55 leading-relaxed mb-2">Available thresholds: 6 h · 12 h · 24 h · 48 h · 1 week · 30 days</p>
+
+  <pre class="bg-[#0d0d14] border border-white/10 rounded-lg p-4 text-sm text-white/70 mb-6 overflow-x-auto"># Strip prompt content from logs older than N hours
+POST /api/prism/admin/system/shrink-logs
+Content-Type: application/json
+
+&#123; "olderThanHours": 48 &#125;
+
+# Response: &#123; "modified": 1234, "olderThanHours": 48 &#125;</pre>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Backup</h2>
+  <ul class="list-disc ml-6 text-white/55 space-y-2 mb-6">
+    <li>Back up the <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">openmodelprism</code> MongoDB database — it contains all tenant configuration, provider configuration, routing rules, users, and analytics.</li>
+    <li>Provider credentials are encrypted with <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">ENCRYPTION_KEY</code> — back up this value separately and store it securely.</li>
+    <li>Request logs grow approximately 1 KB per request. For high-volume deployments, add a TTL index on <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">RequestLog.timestamp</code> to cap collection size.</li>
+  </ul>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Upgrading</h2>
+  <pre class="bg-[#0d0d14] border border-white/10 rounded-lg p-4 overflow-x-auto text-sm text-white/70 mb-4 font-mono"><code>git pull
+docker compose build
+docker compose up -d</code></pre>
+  <p class="text-white/55 leading-relaxed mb-6">All application state is stored in MongoDB. For zero downtime, bring up new pods before terminating old ones — the load balancer will route traffic away from pods that fail their <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">/health</code> check.</p>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Security & Infrastructure Updates</h2>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-3">CVE Fixes</h3>
+  <ul class="list-disc ml-6 text-white/55 space-y-1 mb-4">
+    <li>Node 22 Alpine base image with all npm CVEs resolved</li>
+    <li><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">npm</code>, <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">npx</code>, and <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">corepack</code> removed from production image</li>
+    <li>Alpine APK upgraded for zlib CVEs</li>
+  </ul>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-3">Node 22 Base Image</h3>
+  <ul class="list-disc ml-6 text-white/55 space-y-1 mb-4">
+    <li>Dockerfile upgraded from <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">node:20-alpine</code> to <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">node:22-alpine</code></li>
+    <li>Version display reads dynamically from <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">package.json</code> (no more hardcoded values)</li>
+  </ul>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-3">Automatic max_tokens Clamping</h3>
+  <ul class="list-disc ml-6 text-white/55 space-y-1 mb-4">
+    <li>Gateway silently clamps <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">max_tokens</code> to the model's known output limit before forwarding</li>
+    <li>Prevents "max tokens exceeds model limit" errors from providers like AWS Bedrock</li>
+    <li>Limit resolved from discovered model metadata or the built-in model registry</li>
+  </ul>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-3">Whitelist Bypass for Internal Models</h3>
+  <ul class="list-disc ml-6 text-white/55 space-y-1 mb-4">
+    <li><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">auto-prism</code> (and future internal meta-models) always bypasses tenant whitelist/blacklist filtering</li>
+    <li>Server-side whitelist enforcement on chat completions and embeddings endpoints</li>
+  </ul>
+
+</DocsPage>

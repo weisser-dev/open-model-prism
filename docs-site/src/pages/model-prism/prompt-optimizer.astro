@@ -1,0 +1,177 @@
+---
+import DocsPage from '../../layouts/DocsPage.astro';
+---
+
+<DocsPage title="Prompt Optimizer — Model Prism" description="Integrate Model Prism with Prompt Flux for automatic prompt optimization, compression, and guardrails in the gateway pipeline.">
+
+  <h1 class="text-3xl font-bold text-white mb-6">Prompt Optimizer</h1>
+  <p class="text-white/55 leading-relaxed mb-4">
+    Model Prism can integrate with <a href="/prompt-flux" class="text-[#c084fc] hover:text-[#d8b4fe]">Prompt Flux</a> to automatically optimize, compress, and guard prompts flowing through the gateway. When enabled, prompt optimization becomes a transparent step in the gateway pipeline — no client-side changes required.
+  </p>
+
+  <div class="rounded-xl border border-[#c084fc]/20 bg-[#c084fc]/5 p-4 mb-8">
+    <p class="text-[#c084fc] text-sm font-medium mb-2">Requires Prompt Flux</p>
+    <p class="text-white/50 text-sm">
+      This feature requires a running <a href="/prompt-flux/getting-started" class="text-[#c084fc] hover:text-[#d8b4fe]">Prompt Flux instance</a>. See the <a href="/prompt-flux/model-prism-integration" class="text-[#c084fc] hover:text-[#d8b4fe]">Prompt Flux integration guide</a> for setup from the Prompt Flux side.
+    </p>
+  </div>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4" id="integration-modes">Integration Modes</h2>
+  <p class="text-white/55 leading-relaxed mb-4">
+    Choose the integration mode that fits your use case. The mode can be set globally and overridden per tenant.
+  </p>
+
+  <div class="space-y-4 mb-8">
+    <div class="rounded-xl border border-white/10 bg-[#0d0d14] p-5">
+      <div class="flex items-center gap-2 mb-2">
+        <h3 class="text-lg font-semibold text-white/90">Auto-Compress</h3>
+        <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Recommended</span>
+      </div>
+      <p class="text-white/50 text-sm leading-relaxed">
+        Sends every request to Prompt Flux for token compression before forwarding to the LLM provider. Reduces costs by 20-40% with minimal latency impact (typically &lt;100ms). The original prompt intent is preserved — only redundancy and verbosity are removed.
+      </p>
+    </div>
+    <div class="rounded-xl border border-white/10 bg-[#0d0d14] p-5">
+      <h3 class="text-lg font-semibold text-white/90 mb-2">Auto-Optimize</h3>
+      <p class="text-white/50 text-sm leading-relaxed">
+        Applies full prompt optimization (online or offline) to every request. Online mode rewrites prompts via an LLM for maximum quality improvement. Offline mode uses heuristic rules for instant optimization. Best for teams where prompt quality directly impacts output quality.
+      </p>
+    </div>
+    <div class="rounded-xl border border-white/10 bg-[#0d0d14] p-5">
+      <h3 class="text-lg font-semibold text-white/90 mb-2">Analyzer</h3>
+      <p class="text-white/50 text-sm leading-relaxed">
+        Prompts are sent to Prompt Flux asynchronously for quality scoring and analysis — but not modified. Results feed into the <a href="/model-prism/prompt-analyses" class="text-[#38bdf8] hover:text-[#7dd3fc]">Prompt Analyses</a> dashboard. Use this when you want visibility into prompt quality without changing the request flow.
+      </p>
+    </div>
+    <div class="rounded-xl border border-white/10 bg-[#0d0d14] p-5">
+      <h3 class="text-lg font-semibold text-white/90 mb-2">Disabled</h3>
+      <p class="text-white/50 text-sm leading-relaxed">
+        No integration. Requests flow directly from Model Prism to the LLM provider without any Prompt Flux involvement. This is the default when no Prompt Flux instance is configured.
+      </p>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4" id="configuration">Configuration</h2>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-3">Admin UI</h3>
+  <p class="text-white/55 leading-relaxed mb-4">
+    Navigate to <strong class="text-white/80">Settings &rarr; Prompt Optimizer</strong> in the Model Prism admin UI:
+  </p>
+  <ol class="list-decimal list-inside text-white/55 mb-4 space-y-2">
+    <li>Enter the <strong class="text-white/80">Prompt Flux URL</strong> (e.g., <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">http://prompt-flux:3100</code>)</li>
+    <li>Enter the <strong class="text-white/80">API Key</strong> for authentication with Prompt Flux</li>
+    <li>Select the default <strong class="text-white/80">Mode</strong> (auto-compress, auto-optimize, analyzer, disabled)</li>
+    <li>Configure <strong class="text-white/80">Timeout</strong> and <strong class="text-white/80">Fallback</strong> behavior</li>
+    <li>Click <strong class="text-white/80">Test Connection</strong> to verify connectivity</li>
+    <li>Click <strong class="text-white/80">Save</strong></li>
+  </ol>
+
+  <h3 class="text-lg font-semibold text-white/90 mt-6 mb-3">Environment Variables</h3>
+  <div class="overflow-x-auto mb-6">
+    <table class="w-full border-collapse">
+      <thead>
+        <tr>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Variable</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Default</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        {[
+          ['PROMPT_FLUX_URL', '—', 'Prompt Flux instance URL'],
+          ['PROMPT_FLUX_API_KEY', '—', 'API key for Prompt Flux authentication'],
+          ['PROMPT_FLUX_MODE', 'disabled', 'Global mode: auto-compress | auto-optimize | analyzer | disabled'],
+          ['PROMPT_FLUX_TIMEOUT', '5000', 'Request timeout in milliseconds'],
+          ['PROMPT_FLUX_FALLBACK', 'skip', 'Behavior when Prompt Flux is unavailable: skip | fail'],
+        ].map(([key, def, desc]) => (
+          <tr>
+            <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">{key}</code></td>
+            <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm"><code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">{def}</code></td>
+            <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">{desc}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4" id="per-tenant-settings">Per-Tenant Settings</h2>
+  <p class="text-white/55 leading-relaxed mb-4">
+    Override the global Prompt Optimizer mode for individual tenants. This allows you to enable full optimization for some teams while keeping others on compression-only or analyzer mode.
+  </p>
+  <p class="text-white/55 leading-relaxed mb-4">
+    Navigate to <strong class="text-white/80">Tenants &rarr; [tenant name] &rarr; Prompt Optimizer</strong> to configure per-tenant overrides:
+  </p>
+  <div class="overflow-x-auto mb-6">
+    <table class="w-full border-collapse">
+      <thead>
+        <tr>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Setting</th>
+          <th class="bg-white/5 text-left text-white/70 px-4 py-2 text-sm">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        {[
+          ['Mode Override', 'Override the global mode for this tenant (auto-compress, auto-optimize, analyzer, disabled, or inherit global)'],
+          ['Guardrails', 'Enable or disable guardrail enforcement for this tenant\'s requests'],
+          ['Optimization Level', 'For auto-optimize mode: online, offline, or inherit global'],
+        ].map(([key, desc]) => (
+          <tr>
+            <td class="border-t border-white/10 px-4 py-2 text-white/70 text-sm font-medium">{key}</td>
+            <td class="border-t border-white/10 px-4 py-2 text-white/50 text-sm">{desc}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Gateway Pipeline Position</h2>
+  <p class="text-white/55 leading-relaxed mb-4">
+    When enabled, prompt optimization fits into the Model Prism gateway pipeline after authentication and before routing:
+  </p>
+  <pre class="bg-[#0d0d14] border border-white/10 rounded-lg p-4 overflow-x-auto text-sm text-white/70 mb-6 font-mono"><code>POST /api/:tenant/v1/chat/completions
+  → Tenant auth (API key check)
+  → Rate limiting
+  → Model alias resolution
+  → Prompt Optimizer (Prompt Flux)    ← inserted here
+  → Auto-routing (LLM classifier)
+  → Provider selection
+  → Provider adapter call
+  → Response enrichment
+  → Analytics logging</code></pre>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Response Enrichment</h2>
+  <p class="text-white/55 leading-relaxed mb-4">
+    When prompt optimization is active, Model Prism adds an <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">optimization_info</code> block to the response metadata:
+  </p>
+  <pre class="bg-[#0d0d14] border border-white/10 rounded-lg p-4 overflow-x-auto text-sm text-white/70 mb-6 font-mono"><code>{'{'}
+  "optimization_info": {'{'}
+    "mode": "auto-compress",
+    "tokens_original": 1200,
+    "tokens_optimized": 840,
+    "tokens_saved": 360,
+    "savings_percent": 30.0,
+    "guardrails_triggered": 0,
+    "latency_ms": 45
+  {'}'}
+{'}'}</code></pre>
+
+  <h2 class="text-2xl font-semibold text-white mt-10 mb-4">Fallback Behavior</h2>
+  <p class="text-white/55 leading-relaxed mb-4">
+    When Prompt Flux is unavailable or times out, Model Prism falls back based on the <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#38bdf8] text-sm font-mono">PROMPT_FLUX_FALLBACK</code> setting:
+  </p>
+  <ul class="list-disc ml-6 text-white/55 space-y-1 mb-4">
+    <li><strong class="text-white/80">skip</strong> (default) — forward the original unoptimized prompt to the LLM provider. The request succeeds but without optimization.</li>
+    <li><strong class="text-white/80">fail</strong> — return a 503 error to the client. Use this when guardrail enforcement is mandatory and skipping is not acceptable.</li>
+  </ul>
+
+  <div class="rounded-xl border border-[#38bdf8]/20 bg-[#38bdf8]/5 p-4 mt-8 mb-4">
+    <p class="text-[#38bdf8] text-sm font-medium mb-2">Related Documentation</p>
+    <ul class="text-white/50 text-sm space-y-1">
+      <li>&rarr; <a href="/prompt-flux" class="text-[#c084fc] hover:text-[#d8b4fe]">Prompt Flux Overview</a> — full documentation for the Prompt Flux platform</li>
+      <li>&rarr; <a href="/prompt-flux/model-prism-integration" class="text-[#c084fc] hover:text-[#d8b4fe]">Prompt Flux: Model Prism Integration</a> — configuration from the Prompt Flux side</li>
+      <li>&rarr; <a href="/model-prism/prompt-analyses" class="text-[#38bdf8] hover:text-[#7dd3fc]">Prompt Analyses</a> — prompt quality scoring and dashboards</li>
+      <li>&rarr; <a href="/prompt-flux/guardrails" class="text-[#c084fc] hover:text-[#d8b4fe]">Prompt Flux: Guardrails</a> — guardrail rules and PII detection</li>
+    </ul>
+  </div>
+
+</DocsPage>

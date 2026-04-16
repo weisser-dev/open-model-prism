@@ -1,0 +1,211 @@
+<!-- Client-side search modal — Cmd+K / Ctrl+K to open -->
+<button
+  id="search-trigger"
+  class="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-white/40 text-sm hover:border-white/20 hover:text-white/60 transition-all duration-200 cursor-pointer"
+  aria-label="Search docs"
+>
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <circle cx="11" cy="11" r="8"/>
+    <path d="m21 21-4.35-4.35"/>
+  </svg>
+  <span class="hidden sm:inline">Search</span>
+  <kbd class="hidden sm:inline-flex items-center gap-0.5 ml-2 px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-[10px] font-mono text-white/30">
+    <span class="text-xs">⌘</span>K
+  </kbd>
+</button>
+
+<!-- Modal backdrop + dialog -->
+<div id="search-modal" class="fixed inset-0 z-[100] hidden" role="dialog" aria-modal="true" aria-label="Search documentation">
+  <div id="search-backdrop" class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
+  <div class="relative flex items-start justify-center pt-[15vh] px-4">
+    <div class="w-full max-w-xl bg-[#0e0e16] border border-white/10 rounded-xl shadow-2xl shadow-black/50 overflow-hidden">
+      <!-- Search input -->
+      <div class="flex items-center gap-3 px-4 border-b border-white/8">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-white/30 flex-shrink-0">
+          <circle cx="11" cy="11" r="8"/>
+          <path d="m21 21-4.35-4.35"/>
+        </svg>
+        <input
+          id="search-input"
+          type="text"
+          placeholder="Search documentation..."
+          class="w-full py-3 bg-transparent text-white text-sm outline-none placeholder:text-white/30"
+          autocomplete="off"
+          spellcheck="false"
+        />
+        <kbd class="flex-shrink-0 px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-[10px] font-mono text-white/30">ESC</kbd>
+      </div>
+      <!-- Results -->
+      <div id="search-results" class="max-h-[50vh] overflow-y-auto p-2">
+        <div id="search-empty" class="px-4 py-8 text-center text-white/30 text-sm">
+          Type to search across all documentation pages
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const modal = document.getElementById('search-modal');
+  const backdrop = document.getElementById('search-backdrop');
+  const input = document.getElementById('search-input');
+  const results = document.getElementById('search-results');
+  const trigger = document.getElementById('search-trigger');
+  const emptyEl = document.getElementById('search-empty');
+
+  let index = null;
+  let isOpen = false;
+
+  async function loadIndex() {
+    if (index) return;
+    try {
+      const resp = await fetch('/search-index.json');
+      index = await resp.json();
+    } catch {
+      index = [];
+    }
+  }
+
+  function open() {
+    loadIndex();
+    modal?.classList.remove('hidden');
+    input?.focus();
+    isOpen = true;
+    document.body.style.overflow = 'hidden';
+  }
+
+  function close() {
+    modal?.classList.add('hidden');
+    if (input) input.value = '';
+    if (results && emptyEl) {
+      results.innerHTML = '';
+      results.appendChild(emptyEl);
+      emptyEl.classList.remove('hidden');
+    }
+    isOpen = false;
+    document.body.style.overflow = '';
+  }
+
+  function highlight(text, terms) {
+    if (!terms.length) return escapeHtml(text);
+    const re = new RegExp(`(${terms.map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})`, 'gi');
+    return escapeHtml(text).replace(re, '<mark class="bg-[#38bdf8]/20 text-[#38bdf8] rounded px-0.5">$1</mark>');
+  }
+
+  function escapeHtml(s) {
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  function search(query) {
+    if (!index || !results) return;
+
+    const q = query.trim().toLowerCase();
+    if (!q) {
+      results.innerHTML = '';
+      if (emptyEl) {
+        emptyEl.classList.remove('hidden');
+        results.appendChild(emptyEl);
+      }
+      return;
+    }
+
+    const terms = q.split(/\s+/).filter(Boolean);
+    const scored = [];
+
+    for (const entry of index) {
+      const titleLower = entry.title.toLowerCase();
+      const textLower = entry.text.toLowerCase();
+      let score = 0;
+
+      for (const term of terms) {
+        if (titleLower.includes(term)) score += 10;
+        if (titleLower === q) score += 20;
+        const textMatches = textLower.split(term).length - 1;
+        score += Math.min(textMatches, 5);
+      }
+
+      if (score > 0) {
+        scored.push({ ...entry, score });
+      }
+    }
+
+    scored.sort((a, b) => b.score - a.score);
+    const top = scored.slice(0, 15);
+
+    if (top.length === 0) {
+      results.innerHTML = `<div class="px-4 py-8 text-center text-white/30 text-sm">No results for "${escapeHtml(q)}"</div>`;
+      return;
+    }
+
+    // Group by page
+    const grouped = new Map();
+    for (const r of top) {
+      const page = r.page || 'Docs';
+      if (!grouped.has(page)) grouped.set(page, []);
+      grouped.get(page).push(r);
+    }
+
+    let html = '';
+    for (const [page, items] of grouped) {
+      html += `<div class="mb-1"><div class="px-3 py-1 text-[10px] font-semibold uppercase tracking-widest text-white/25">${escapeHtml(page)}</div>`;
+      for (const item of items) {
+        // Find a snippet around the first match
+        let snippet = '';
+        const textLower = item.text.toLowerCase();
+        for (const term of terms) {
+          const idx = textLower.indexOf(term);
+          if (idx >= 0) {
+            const start = Math.max(0, idx - 40);
+            const end = Math.min(item.text.length, idx + term.length + 80);
+            snippet = (start > 0 ? '...' : '') + item.text.slice(start, end) + (end < item.text.length ? '...' : '');
+            break;
+          }
+        }
+        if (!snippet) snippet = item.text.slice(0, 120) + (item.text.length > 120 ? '...' : '');
+
+        html += `<a href="${item.href}" class="search-result flex flex-col gap-0.5 px-3 py-2 rounded-lg hover:bg-white/5 transition-colors duration-100 cursor-pointer block" data-idx="${items.indexOf(item)}">
+          <span class="text-sm text-white/80">${highlight(item.title, terms)}</span>
+          <span class="text-xs text-white/35 line-clamp-2 leading-relaxed">${highlight(snippet, terms)}</span>
+        </a>`;
+      }
+      html += '</div>';
+    }
+    results.innerHTML = html;
+  }
+
+  // Event listeners
+  trigger?.addEventListener('click', open);
+  backdrop?.addEventListener('click', close);
+
+  document.addEventListener('keydown', (e) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+      e.preventDefault();
+      isOpen ? close() : open();
+    }
+    if (e.key === 'Escape' && isOpen) {
+      e.preventDefault();
+      close();
+    }
+    // Arrow key navigation
+    if (isOpen && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
+      e.preventDefault();
+      const items = results?.querySelectorAll('.search-result');
+      if (!items?.length) return;
+      const active = results?.querySelector('.search-result.bg-white\\/5');
+      let idx = active ? [...items].indexOf(active) : -1;
+      active?.classList.remove('bg-white/5');
+      idx = e.key === 'ArrowDown' ? Math.min(idx + 1, items.length - 1) : Math.max(idx - 1, 0);
+      items[idx]?.classList.add('bg-white/5');
+      items[idx]?.scrollIntoView({ block: 'nearest' });
+    }
+    if (isOpen && e.key === 'Enter') {
+      const active = results?.querySelector('.search-result.bg-white\\/5');
+      if (active) {
+        e.preventDefault();
+        window.location.href = active.getAttribute('href');
+      }
+    }
+  });
+
+  input?.addEventListener('input', () => search(input.value));
+</script>

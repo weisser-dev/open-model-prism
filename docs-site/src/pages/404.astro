@@ -1,0 +1,36 @@
+---
+import Base from '../layouts/Base.astro';
+---
+
+<Base title="404 — Page Not Found" description="The page you are looking for does not exist." lang="en">
+  <div class="flex flex-col items-center justify-center min-h-[70vh] px-6 text-center relative overflow-hidden">
+
+    <!-- Background stars -->
+    <div class="absolute inset-0 overflow-hidden pointer-events-none">
+      {Array.from({ length: 40 }).map((_, i) => (
+        <div
+          class="absolute rounded-full bg-white"
+          style={`width: ${Math.random() * 2 + 1}px; height: ${Math.random() * 2 + 1}px; top: ${Math.random() * 100}%; left: ${Math.random() * 100}%; opacity: ${Math.random() * 0.4 + 0.1};`}
+        />
+      ))}
+    </div>
+
+    <h1 class="text-8xl md:text-9xl font-bold bg-gradient-to-b from-white to-white/20 bg-clip-text text-transparent mb-6 relative">
+      404
+    </h1>
+    <p class="text-lg text-white/50 mb-8 max-w-md">
+      The page you are looking for does not exist or has been moved.
+    </p>
+    <div class="flex gap-4">
+      <a
+        href="/"
+        class="inline-flex items-center gap-2 bg-[#38bdf8] text-[#0a0a0f] font-medium px-6 py-2.5 rounded-lg hover:bg-[#7dd3fc] transition-colors duration-200"
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M19 12H5M12 19l-7-7 7-7"/>
+        </svg>
+        Back to Docs
+      </a>
+    </div>
+  </div>
+</Base>
